@@ -1,0 +1,4 @@
+- 출력 파일: `/home/junbeom/Projects/ouroboros/binance-websocket/api.md`
+- 파일 크기: 434줄, 약 15KB
+- 모든 웹 검색 성공
+- Advisor 피드백 5개 항목 모두 반영 완료

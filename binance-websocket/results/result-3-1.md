@@ -1,0 +1,14 @@
+- **Output location**: `/home/junbeom/Projects/ouroboros/binance-websocket/webseocket/`
+- **Files created**:
+  - `Cargo.toml` - Project configuration with all dependencies
+  - `src/lib.rs` - Library entry point with re-exports
+  - `src/main.rs` - Example application
+  - `src/error.rs` - Error types and close code handling
+  - `src/message.rs` - Message types and parsing
+  - `src/subscription.rs` - Subscription state management
+  - `src/connection.rs` - Connection manager with reconnection logic
+  - `src/client.rs` - Main BinanceClient implementation
+  - `tests/message_test.rs` - Unit tests for message parsing
+- **Build status**: Success (release build completed)
+- **Test status**: All 8 tests passed
+- **No failures**: All operations completed successfully

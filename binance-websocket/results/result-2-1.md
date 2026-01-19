@@ -1,0 +1,14 @@
+- **출력 파일**: `~/Projects/ouroboros/binance-websocket/rust-websocket.md` (1052줄)
+- **모든 웹 검색 성공**: 총 12개 검색 쿼리 수행, 모두 정상 결과 반환
+- **보고서 확장**: 기존 9개 섹션 → 13개 섹션으로 확장
+- **추가된 주요 내용**:
+  - aws-lc-rs vs ring 암호화 백엔드 벤치마크 (섹션 4.2)
+  - jemalloc 메모리 할당자 최적화 (섹션 4.3)
+  - tokio-websockets SIMD 라이브러리 추가 (섹션 2.2)
+  - barter-data 지원 거래소 목록 업데이트 (Bybit, Gate.io)
+  - fastwebsockets 안전성 주의사항 추가
+  - Binance Ping/Pong 타이밍 및 연결 제한 상세 (섹션 9)
+  - sonic-rs JSON 파싱 벤치마크 및 Lazy 역직렬화 (섹션 10)
+  - WebSocket Close 코드별 에러 핸들링 (섹션 11)
+  - Binance 연결 코드 예시 3개 (섹션 12)
+  - 참고 자료 50+ 링크 (섹션 13)
