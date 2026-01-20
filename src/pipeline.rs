@@ -5,7 +5,7 @@ use async_std::task;
 use futures::future::join_all;
 
 use crate::config::Config;
-use crate::roles::{plan, advise, act, check, CheckResult, PrevTaskContext};
+use crate::roles::{plan, advise, act, check, CheckResult, PrevTaskContext, split, format_task};
 
 /// Context from a completed task, loaded from files
 pub struct TaskContext {
@@ -53,6 +53,37 @@ pub async fn run(config: &Config) -> Result<()> {
     // Ensure hows directory exists
     fs::create_dir_all(&config.hows_dir)
         .context("Failed to create hows directory")?;
+
+    // Check for meta.md and split into tasks if present
+    let meta_path = config.tasks_dir.join("meta.md");
+    if meta_path.exists() {
+        println!("[Splitter] Found meta.md, splitting into tasks...");
+        let meta_content = fs::read_to_string(&meta_path)
+            .context("Failed to read meta.md")?;
+
+        let task_descriptions = split(&meta_content)
+            .context("Failed to split meta task")?;
+
+        // Find highest existing task number
+        let existing_tasks = collect_tasks(&config.tasks_dir).unwrap_or_default();
+        let start_num = existing_tasks.iter().map(|(n, _)| *n).max().unwrap_or(0) + 1;
+
+        println!("[Splitter] Creating {} task files (starting from task-{})...", task_descriptions.len(), start_num);
+        for (i, desc) in task_descriptions.iter().enumerate() {
+            let task_num = start_num + i;
+            let task_path = config.tasks_dir.join(format!("task-{}.md", task_num));
+            let content = format_task(task_num, desc);
+            fs::write(&task_path, &content)
+                .context(format!("Failed to write task-{}.md", task_num))?;
+            println!("  [Created] task-{}.md: {}", task_num, desc);
+        }
+
+        // Rename meta.md to meta.md.done to avoid re-processing
+        let done_path = config.tasks_dir.join("meta.md.done");
+        fs::rename(&meta_path, &done_path)
+            .context("Failed to rename meta.md to meta.md.done")?;
+        println!("[Splitter] Renamed meta.md -> meta.md.done");
+    }
 
     let mut last_processed_task: usize = 0;
 
