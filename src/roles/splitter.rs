@@ -10,12 +10,30 @@ pub fn split(meta_task: &str) -> Result<Vec<String>> {
 GOAL:
 {}
 
+STEP 1 - IDENTIFY GLOBAL CONSTRAINTS:
+First, extract ALL global constraints from the goal. These are requirements that apply to EVERY task:
+- Technology restrictions (e.g., "do not use tokio", "use std-async", "no external dependencies")
+- Architecture requirements (e.g., "must use epoll", "must be thread-safe")
+- Style requirements (e.g., "follow existing patterns", "use async/await")
+- Performance requirements (e.g., "must handle 10k connections")
+
+STEP 2 - EMBED CONSTRAINTS IN EVERY TASK:
+CRITICAL: Every single task description MUST include the global constraints inline.
+DO NOT assume later tasks will "remember" constraints from earlier tasks - they won't!
+
+Example goal: "Create a websocket server. Do not use tokio, use async-std instead."
+BAD split (constraints lost):
+- ["Create WebSocket server struct", "Add connection handling", "Add message routing"]
+GOOD split (constraints preserved):
+- ["Create WebSocket server struct using async-std (NOT tokio)", "Add connection handling using async-std (NOT tokio)", "Add message routing using async-std (NOT tokio)"]
+
 RULES FOR EACH TASK:
 1. ONE clear objective only - no "and" or "then"
 2. Must be independently verifiable (can check pass/fail)
 3. Use simple, direct language
 4. No vague words like "improve", "enhance", "optimize" - be specific
 5. Each task builds on previous tasks but can be validated alone
+6. MUST include all global constraints in the task description itself
 
 IMPORTANT - CONTEXT HANDOFF:
 - Each task runs in a separate session with NO memory of previous sessions
@@ -36,19 +54,11 @@ OUTPUT FORMAT:
 Return ONLY a JSON array of task descriptions. No markdown, no explanation.
 Example: ["Create user model with id, name, email fields", "Add REST endpoint GET /users", "Add REST endpoint POST /users"]
 
-BAD examples (too vague or complex):
-- "Set up the project and configure everything" (multiple things)
-- "Improve the code quality" (vague)
-- "Handle errors appropriately" (vague)
-- "Understand the codebase" (no output file specified)
-- "Document the API" (no output file specified)
+BAD examples (constraints lost in later tasks):
+- ["Create socket using async-std", "Add polling logic", "Handle messages"] - tasks 2 and 3 lost "async-std" constraint!
 
-GOOD examples (clear and specific):
-- "Create SQLite database with users table (id, name, email)"
-- "Add input validation: name required, email must contain @"
-- "Return 400 error with message when validation fails"
-- "Analyze src/api/ directory structure and write findings to C:/project/docs/api-structure.md"
-- "Read C:/project/docs/api-structure.md and add missing endpoint POST /users/login"
+GOOD examples (constraints preserved):
+- ["Create UDP socket struct using async-std (NOT tokio)", "Add epoll-style polling to UDP socket using async-std (NOT tokio)", "Add message handling to UDP socket using async-std (NOT tokio)"]
 
 Now split the goal into tasks:"#,
         meta_task
