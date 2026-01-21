@@ -35,6 +35,20 @@ RULES FOR EACH TASK:
 5. Each task builds on previous tasks but can be validated alone
 6. MUST include all global constraints in the task description itself
 
+CRITICAL - SPECIFIC PURPOSE STATEMENT:
+Each task MUST include:
+- WHAT: The exact artifact to create/modify (file, function, struct, etc.)
+- WHERE: The specific file path or module location
+- SUCCESS CRITERIA: How to verify the task is complete (e.g., "compiles without errors", "test passes", "file exists with X content")
+
+BAD (vague purpose):
+- "Implement error handling for the server"
+- "Add validation logic"
+
+GOOD (specific purpose):
+- "Create ErrorKind enum in src/error.rs with variants: IoError, ParseError, ConnectionClosed. Must compile with 'cargo check'."
+- "Add validate_message() function in src/protocol.rs that returns Result<(), ErrorKind> for Message struct. Must pass 'cargo test validate_message'."
+
 IMPORTANT - CONTEXT HANDOFF:
 - Each task runs in a separate session with NO memory of previous sessions
 - If a task creates something the next task needs, specify writing to a file with ABSOLUTE PATH
