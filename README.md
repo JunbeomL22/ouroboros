@@ -89,11 +89,71 @@ cargo run -- --tasks-dir ./my-tasks --hows-dir ./my-outputs --checks 7 --thresho
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--tasks-dir` | `./tasks` | Directory containing task files |
-| `--hows-dir` | `./hows` | Directory for output files |
-| `--checks` | `5` | Number of validation runs per task |
-| `--threshold` | `4` | Minimum passes required (out of checks) |
-| `--max-retries` | `3` | Maximum retry attempts before failing |
+| `-c, --config` | `./config.json` | Path to configuration file |
+
+## Configuration
+
+The pipeline is configured via a JSON file. By default, it looks for `config.json` in the **current working directory** (where you run the command from).
+
+```bash
+# Uses ./config.json in current directory
+./ouroboros.exe
+
+# Specify a custom config path
+./ouroboros.exe -c /path/to/config.json
+./ouroboros.exe --config ./example/config.json
+```
+
+### Example config.json
+
+```json
+{
+  "outliner": { "cli": "claude-code", "model": "haiku" },
+  "planner": { "cli": "claude-code", "model": "opus" },
+  "advisor": { "cli": "claude-code", "model": "sonnet" },
+  "actor": { "cli": "claude-code", "model": "opus" },
+  "checker": { "cli": "claude-code", "model": "sonnet" },
+  "splitter": { "cli": "claude-code", "model": "opus" },
+
+  "tasks_dir": "./tasks",
+  "results_dir": "./results",
+  "plans_dir": "./plans",
+  "advises_dir": "./advises",
+  "checks_dir": "./checks",
+  "hows_dir": "./hows",
+
+  "checks": 3,
+  "threshold": 3,
+  "max_retries": 3
+}
+```
+
+### Configuration Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `outliner` | claude-code/haiku | Role config for outliner |
+| `planner` | claude-code/opus | Role config for planner |
+| `advisor` | claude-code/sonnet | Role config for advisor |
+| `actor` | claude-code/opus | Role config for actor |
+| `checker` | claude-code/sonnet | Role config for checker |
+| `splitter` | claude-code/opus | Role config for splitter |
+| `tasks_dir` | `./tasks` | Directory containing task files |
+| `results_dir` | `./results` | Directory for result files |
+| `plans_dir` | `./plans` | Directory for plan files |
+| `advises_dir` | `./advises` | Directory for advice files |
+| `checks_dir` | `./checks` | Directory for check result files |
+| `hows_dir` | `./hows` | Directory for how files |
+| `checks` | `3` | Number of validation runs per task |
+| `threshold` | `3` | Minimum passes required |
+| `max_retries` | `3` | Maximum retry attempts |
+
+### Supported CLIs
+
+| CLI | Description |
+|-----|-------------|
+| `claude-code` | Claude Code CLI |
+| `codex` | OpenAI Codex CLI |
 
 ## Directory Structure
 

@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use async_std::task;
 use futures::future::join_all;
 
-use crate::config::Config;
+use crate::config::AgentConfig;
 use crate::roles::{plan, advise, act, check, CheckResult, PrevTaskContext, split, format_task};
 
 /// Context from a completed task, loaded from files
@@ -35,7 +35,7 @@ fn find_highest_attempt(dir: &Path, prefix: &str, task_num: usize) -> Option<usi
 }
 
 /// Load previous task context from files (result and how only)
-fn load_prev_task_context(config: &Config, prev_task_num: usize) -> Option<TaskContext> {
+fn load_prev_task_context(config: &AgentConfig, prev_task_num: usize) -> Option<TaskContext> {
     // Find highest attempt for result files
     let result_attempt = find_highest_attempt(&config.results_dir, "result", prev_task_num)?;
     let how_attempt = find_highest_attempt(&config.hows_dir, "how", prev_task_num)?;
@@ -49,7 +49,7 @@ fn load_prev_task_context(config: &Config, prev_task_num: usize) -> Option<TaskC
     Some(TaskContext { how, result })
 }
 
-pub async fn run(config: &Config) -> Result<()> {
+pub async fn run(config: &AgentConfig) -> Result<()> {
     // Ensure hows directory exists
     fs::create_dir_all(&config.hows_dir)
         .context("Failed to create hows directory")?;
@@ -61,7 +61,7 @@ pub async fn run(config: &Config) -> Result<()> {
         let meta_content = fs::read_to_string(&meta_path)
             .context("Failed to read meta.md")?;
 
-        let task_descriptions = split(&meta_content)
+        let task_descriptions = split(&config.splitter, &meta_content)
             .context("Failed to split meta task")?;
 
         // Find highest existing task number
@@ -154,7 +154,7 @@ fn parse_task_number(filename: &str) -> Option<usize> {
 }
 
 async fn process_task(
-    config: &Config,
+    config: &AgentConfig,
     task_path: &Path,
     task_num: usize,
     prev_context: Option<&TaskContext>,
@@ -182,6 +182,7 @@ async fn process_task(
             result: &c.result,
         });
         let initial_plan = plan(
+            &config.planner,
             &task_content,
             failed_result.as_deref(),
             failed_check_feedbacks.as_deref(),
@@ -197,7 +198,7 @@ async fn process_task(
 
         // Step 2: Advisor reviews plan
         println!("[Advisor] Reviewing plan...");
-        let advice = advise(&task_content, &initial_plan, failed_result.as_deref(), failed_check_feedbacks.as_deref())?;
+        let advice = advise(&config.advisor, &task_content, &initial_plan, failed_result.as_deref(), failed_check_feedbacks.as_deref())?;
         println!("[Advisor] Feedback provided.");
 
         // Save advise file
@@ -212,6 +213,7 @@ async fn process_task(
             result: &c.result,
         });
         let revised_plan = plan(
+            &config.planner,
             &task_content,
             failed_result.as_deref(),
             failed_check_feedbacks.as_deref(),
@@ -227,7 +229,7 @@ async fn process_task(
 
         // Step 4: Actor executes revised plan
         println!("[Actor] Executing plan...");
-        let actor_output = act(&task_content, &revised_plan)?;
+        let actor_output = act(&config.actor, &task_content, &revised_plan)?;
         println!("[Actor] Execution complete.");
 
         // Save result file
@@ -243,11 +245,14 @@ async fn process_task(
         // Step 5: Checker validates multiple times (parallel)
         println!("[Checker] Running {} validation checks in parallel...", config.checks);
 
+        // Clone checker config for parallel checks
+        let checker_config = config.checker.clone();
         let futures: Vec<_> = (1..=config.checks)
             .map(|i| {
                 let task_clone = task_content.clone();
                 let how_clone = actor_output.how.clone();
-                task::spawn_blocking(move || (i, check(&task_clone, &how_clone)))
+                let checker_clone = checker_config.clone();
+                task::spawn_blocking(move || (i, check(&checker_clone, &task_clone, &how_clone)))
             })
             .collect();
 

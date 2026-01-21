@@ -1,6 +1,6 @@
 use anyhow::Result;
-use crate::claude::call_claude;
-use crate::model;
+use crate::agent::call_agent;
+use crate::config::RoleConfig;
 
 /// Check result containing pass/fail status and detailed feedback
 pub struct CheckResult {
@@ -8,7 +8,7 @@ pub struct CheckResult {
     pub feedback: String,
 }
 
-pub fn check(task: &str, how: &str) -> Result<CheckResult> {
+pub fn check(role_config: &RoleConfig, task: &str, how: &str) -> Result<CheckResult> {
     let prompt = format!(
         r#"Task that was supposed to be completed:
 {}
@@ -30,7 +30,7 @@ Provide a brief analysis, then on the final line write exactly "VERDICT: PASS" o
         task, how
     );
 
-    let response = call_claude("Checker", &prompt, model::CHECKER)?;
+    let response = call_agent(role_config, "Checker", &prompt)?;
     let passed = response.to_uppercase().contains("VERDICT: PASS");
 
     Ok(CheckResult {

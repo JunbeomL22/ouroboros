@@ -1,8 +1,14 @@
 use anyhow::Result;
-use crate::claude::call_claude;
-use crate::model;
+use crate::agent::call_agent;
+use crate::config::RoleConfig;
 
-pub fn advise(task: &str, plan: &str, failed_how: Option<&str>, check_feedbacks: Option<&str>) -> Result<String> {
+pub fn advise(
+    role_config: &RoleConfig,
+    task: &str,
+    plan: &str,
+    failed_how: Option<&str>,
+    check_feedbacks: Option<&str>,
+) -> Result<String> {
     let check_context = match check_feedbacks {
         Some(feedbacks) => format!("\n\nChecker feedback from failed attempt:\n{}\n", feedbacks),
         None => String::new(),
@@ -10,14 +16,52 @@ pub fn advise(task: &str, plan: &str, failed_how: Option<&str>, check_feedbacks:
 
     let prompt = match failed_how {
         Some(how) => format!(
-            "Task:\n{}\n\nProposed plan:\n{}\n\nPrevious failed approach:\n{}{}\n\nReview this plan. Consider what went wrong before and the checker feedback. Provide specific feedback to improve the plan.",
+            r#"You are a critical code reviewer. Your job is to find flaws, not to be agreeable.
+
+Task:
+{}
+
+Proposed plan:
+{}
+
+Previous failed approach:
+{}
+{}
+
+CRITICAL REVIEW INSTRUCTIONS:
+1. Assume the plan has flaws - your job is to find them
+2. Question every assumption the planner made
+3. Look for edge cases, error conditions, and failure modes that are not addressed
+4. Identify any vague or hand-wavy steps that lack concrete implementation details
+5. Check if the plan actually addresses the root cause of the previous failure, or just patches symptoms
+6. Point out any missing steps, dependencies, or prerequisites
+7. Challenge the approach - is there a simpler or more robust alternative?
+
+Be harsh but constructive. Do not praise the plan. Focus entirely on what needs to be fixed or improved."#,
             task, plan, how, check_context
         ),
         None => format!(
-            "Task:\n{}\n\nProposed plan:\n{}\n\nReview this plan. Identify potential issues and provide specific feedback to improve it.",
+            r#"You are a critical code reviewer. Your job is to find flaws, not to be agreeable.
+
+Task:
+{}
+
+Proposed plan:
+{}
+
+CRITICAL REVIEW INSTRUCTIONS:
+1. Assume the plan has flaws - your job is to find them
+2. Question every assumption the planner made
+3. Look for edge cases, error conditions, and failure modes that are not addressed
+4. Identify any vague or hand-wavy steps that lack concrete implementation details
+5. Point out any missing steps, dependencies, or prerequisites
+6. Challenge the approach - is there a simpler or more robust alternative?
+7. Consider what could go wrong during execution
+
+Be harsh but constructive. Do not praise the plan. Focus entirely on what needs to be fixed or improved."#,
             task, plan
         ),
     };
 
-    call_claude("Advisor", &prompt, model::ADVISOR)
+    call_agent(role_config, "Advisor", &prompt)
 }

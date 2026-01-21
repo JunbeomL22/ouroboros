@@ -1,0 +1,19 @@
+{
+  "outliner": { "cli": "codex", "model": "low" },
+  "advisor": { "cli": "codex", "model": "medium" },
+  "planner": { "cli": "claude-code", "model": "opus" },
+  "actor": { "cli": "claude-code", "model": "opus" },
+  "checker": { "cli": "claude-code", "model": "sonnet" },
+  "splitter": { "cli": "claude-code", "model": "opus" },
+
+  "tasks_dir": "./tasks",
+  "results_dir": "./results",
+  "plans_dir": "./plans",
+  "advises_dir": "./advises",
+  "checks_dir": "./checks",
+  "hows_dir": "./hows",
+
+  "checks": 3,
+  "threshold": 3,
+  "max_retries": 3
+}

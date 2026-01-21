@@ -1,6 +1,6 @@
 use anyhow::Result;
-use crate::claude::call_claude;
-use crate::model;
+use crate::agent::call_agent;
+use crate::config::RoleConfig;
 
 /// Context from a previously completed task (only how and result)
 pub struct PrevTaskContext<'a> {
@@ -9,6 +9,7 @@ pub struct PrevTaskContext<'a> {
 }
 
 pub fn plan(
+    role_config: &RoleConfig,
     task: &str,
     failed_how: Option<&str>,
     check_feedbacks: Option<&str>,
@@ -49,5 +50,5 @@ pub fn plan(
         ),
     };
 
-    call_claude("Planner", &prompt, model::PLANNER)
+    call_agent(role_config, "Planner", &prompt)
 }

@@ -1,9 +1,9 @@
 use anyhow::Result;
-use crate::claude::call_claude;
-use crate::model;
+use crate::agent::call_agent;
+use crate::config::RoleConfig;
 
 /// Split a meta task into individual task files
-pub fn split(meta_task: &str) -> Result<Vec<String>> {
+pub fn split(role_config: &RoleConfig, meta_task: &str) -> Result<Vec<String>> {
     let prompt = format!(
         r#"You are a task splitter. Break down the following goal into a sequence of independent tasks.
 
@@ -78,7 +78,7 @@ Now split the goal into tasks:"#,
         meta_task
     );
 
-    let response = call_claude("TaskSplitter", &prompt, model::SPLITTER)?;
+    let response = call_agent(role_config, "TaskSplitter", &prompt)?;
 
     // Parse JSON array from response
     let tasks: Vec<String> = serde_json::from_str(&response)

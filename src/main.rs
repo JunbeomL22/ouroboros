@@ -1,26 +1,39 @@
+mod agent;
 mod config;
-mod claude;
-mod model;
 mod pipeline;
 mod roles;
 
-use config::Config;
+use config::{AgentConfig, Config};
 use std::fs;
 
 #[async_std::main]
 async fn main() {
-    let config = Config::parse_args();
+    let config = match Config::load() {
+        Ok(cfg) => cfg,
+        Err(e) => {
+            eprintln!("Failed to load config: {}", e);
+            std::process::exit(1);
+        }
+    };
 
-    println!("Ouroboros - Recursive Claude Pipeline");
-    println!("Tasks dir: {:?}", config.tasks_dir);
-    println!("Results dir: {:?}", config.results_dir);
-    println!("Plans dir: {:?}", config.plans_dir);
-    println!("Advises dir: {:?}", config.advises_dir);
-    println!("Checks dir: {:?}", config.checks_dir);
-    println!("Checks: {}, Threshold: {}, Max retries: {}",
+    println!("Ouroboros - Recursive Agent Pipeline");
+    println!("Roles:");
+    println!("  outliner: {} / {}", config.outliner.cli, config.outliner.model);
+    println!("  planner:  {} / {}", config.planner.cli, config.planner.model);
+    println!("  advisor:  {} / {}", config.advisor.cli, config.advisor.model);
+    println!("  actor:    {} / {}", config.actor.cli, config.actor.model);
+    println!("  checker:  {} / {}", config.checker.cli, config.checker.model);
+    println!("  splitter: {} / {}", config.splitter.cli, config.splitter.model);
+    println!("Directories:");
+    println!("  tasks:   {:?}", config.tasks_dir);
+    println!("  results: {:?}", config.results_dir);
+    println!("  plans:   {:?}", config.plans_dir);
+    println!("  advises: {:?}", config.advises_dir);
+    println!("  checks:  {:?}", config.checks_dir);
+    println!("  hows:    {:?}", config.hows_dir);
+    println!("Settings: checks={}, threshold={}, max_retries={}",
              config.checks, config.threshold, config.max_retries);
 
-    // Create all directories upfront at launch
     if let Err(e) = create_directories(&config) {
         eprintln!("Failed to create directories: {}", e);
         std::process::exit(1);
@@ -32,12 +45,13 @@ async fn main() {
     }
 }
 
-fn create_directories(config: &Config) -> std::io::Result<()> {
+fn create_directories(config: &AgentConfig) -> std::io::Result<()> {
     fs::create_dir_all(&config.tasks_dir)?;
     fs::create_dir_all(&config.results_dir)?;
     fs::create_dir_all(&config.plans_dir)?;
     fs::create_dir_all(&config.advises_dir)?;
     fs::create_dir_all(&config.checks_dir)?;
-    println!("All directories created successfully.");
+    fs::create_dir_all(&config.hows_dir)?;
+    println!("Directories created.");
     Ok(())
 }

@@ -1,13 +1,13 @@
 use anyhow::Result;
-use crate::claude::call_claude;
-use crate::model;
+use crate::agent::call_agent;
+use crate::config::RoleConfig;
 
 pub struct ActorOutput {
     pub how: String,
     pub result: String,
 }
 
-pub fn act(task: &str, plan: &str) -> Result<ActorOutput> {
+pub fn act(role_config: &RoleConfig, task: &str, plan: &str) -> Result<ActorOutput> {
     let prompt = format!(
         r#"Task:
 {}
@@ -46,7 +46,7 @@ Make sure to include both sections with the exact delimiters shown above."#,
         task, plan
     );
 
-    let output = call_claude("Actor", &prompt, model::ACTOR)?;
+    let output = call_agent(role_config, "Actor", &prompt)?;
     parse_actor_output(&output)
 }
 
