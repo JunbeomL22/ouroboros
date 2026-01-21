@@ -19,8 +19,8 @@ async fn main() {
     println!("Ouroboros - Recursive Agent Pipeline");
     println!("Roles:");
     println!("  outliner: {} / {}", config.outliner.cli, config.outliner.model);
-    println!("  planner:  {} / {}", config.planner.cli, config.planner.model);
     println!("  advisor:  {} / {}", config.advisor.cli, config.advisor.model);
+    println!("  planner:  {} / {}", config.planner.cli, config.planner.model);
     println!("  actor:    {} / {}", config.actor.cli, config.actor.model);
     println!("  checker:  {} / {}", config.checker.cli, config.checker.model);
     println!("  splitter: {} / {}", config.splitter.cli, config.splitter.model);

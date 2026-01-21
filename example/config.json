@@ -3,7 +3,7 @@
   "advisor": { "cli": "codex", "model": "medium" },
   "planner": { "cli": "claude-code", "model": "opus" },
   "actor": { "cli": "claude-code", "model": "opus" },
-  "checker": { "cli": "claude-code", "model": "sonnet" },
+  "checker": { "cli": "codex", "model": "high" },
   "splitter": { "cli": "claude-code", "model": "opus" },
 
   "tasks_dir": "./tasks",

@@ -83,11 +83,11 @@ fn call_codex(role: &str, prompt: &str, model: &str) -> Result<String> {
         .args([
             "/C",
             "codex",
-            "-p",
-            "-",
+            "exec",
             "--model",
             model,
-            "--dangerously-bypass-approvals-and-sandbox",
+            "--full-auto",
+            "-",
         ])
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -98,11 +98,11 @@ fn call_codex(role: &str, prompt: &str, model: &str) -> Result<String> {
     #[cfg(not(windows))]
     let mut child = Command::new("codex")
         .args([
-            "-p",
-            "-",
+            "exec",
             "--model",
             model,
-            "--dangerously-bypass-approvals-and-sandbox",
+            "--full-auto",
+            "-",
         ])
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())

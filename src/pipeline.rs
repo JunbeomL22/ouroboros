@@ -5,7 +5,7 @@ use async_std::task;
 use futures::future::join_all;
 
 use crate::config::AgentConfig;
-use crate::roles::{plan, advise, act, check, CheckResult, PrevTaskContext, split, format_task};
+use crate::roles::{plan, advise, act, check, CheckResult, PrevTaskContext, split, format_task, outline};
 
 /// Context from a completed task, loaded from files
 pub struct TaskContext {
@@ -50,9 +50,11 @@ fn load_prev_task_context(config: &AgentConfig, prev_task_num: usize) -> Option<
 }
 
 pub async fn run(config: &AgentConfig) -> Result<()> {
-    // Ensure hows directory exists
+    // Ensure output directories exist
     fs::create_dir_all(&config.hows_dir)
         .context("Failed to create hows directory")?;
+    fs::create_dir_all(&config.outlines_dir)
+        .context("Failed to create outlines directory")?;
 
     // Check for meta.md and split into tasks if present
     let meta_path = config.tasks_dir.join("meta.md");
@@ -170,35 +172,35 @@ async fn process_task(
         println!("\n--- Attempt {} of {} ---", attempt, config.max_retries);
 
         // Compute output paths with task number and attempt number
+        let outline_path = config.outlines_dir.join(format!("outline-{}-{}.md", task_num, attempt));
         let plan_path = config.plans_dir.join(format!("plan-{}-{}.md", task_num, attempt));
         let advise_path = config.advises_dir.join(format!("advise-{}-{}.md", task_num, attempt));
         let result_path = config.results_dir.join(format!("result-{}-{}.md", task_num, attempt));
         let how_path = config.hows_dir.join(format!("how-{}-{}.md", task_num, attempt));
 
-        // Step 1: Planner creates initial plan
-        println!("[Planner] Creating plan...");
+        // Step 1: Outliner creates high-level outline
+        println!("[Outliner] Creating outline...");
         let prev_task_context = prev_context.map(|c| PrevTaskContext {
             how: &c.how,
             result: &c.result,
         });
-        let initial_plan = plan(
-            &config.planner,
+        let task_outline = outline(
+            &config.outliner,
             &task_content,
             failed_result.as_deref(),
             failed_check_feedbacks.as_deref(),
-            None,
             prev_task_context,
         )?;
-        println!("[Planner] Plan created.");
+        println!("[Outliner] Outline created.");
 
-        // Save initial plan before advising
-        fs::write(&plan_path, &initial_plan)
-            .context("Failed to write initial plan file")?;
-        println!("[Saved] {} (initial)", plan_path.display());
+        // Save outline file
+        fs::write(&outline_path, &task_outline)
+            .context("Failed to write outline file")?;
+        println!("[Saved] {}", outline_path.display());
 
-        // Step 2: Advisor reviews plan
-        println!("[Advisor] Reviewing plan...");
-        let advice = advise(&config.advisor, &task_content, &initial_plan, failed_result.as_deref(), failed_check_feedbacks.as_deref())?;
+        // Step 2: Advisor reviews outline
+        println!("[Advisor] Reviewing outline...");
+        let advice = advise(&config.advisor, &task_content, &task_outline, failed_result.as_deref(), failed_check_feedbacks.as_deref())?;
         println!("[Advisor] Feedback provided.");
 
         // Save advise file
@@ -206,9 +208,9 @@ async fn process_task(
             .context("Failed to write advise file")?;
         println!("[Saved] {}", advise_path.display());
 
-        // Step 3: Planner revises based on advice
-        println!("[Planner] Revising plan based on feedback...");
-        let prev_task_context_revised = prev_context.map(|c| PrevTaskContext {
+        // Step 3: Planner creates detailed plan based on outline and advice
+        println!("[Planner] Creating plan from outline and feedback...");
+        let prev_task_context_for_plan = prev_context.map(|c| PrevTaskContext {
             how: &c.how,
             result: &c.result,
         });
@@ -217,15 +219,16 @@ async fn process_task(
             &task_content,
             failed_result.as_deref(),
             failed_check_feedbacks.as_deref(),
-            Some(&advice),
-            prev_task_context_revised,
+            Some(&format!("Outline:\n{}\n\nAdvisor Feedback:\n{}", task_outline, advice)),
+            prev_task_context_for_plan,
         )?;
-        println!("[Planner] Plan revised.");
+        println!("[Planner] Plan created.");
 
-        // Save revised plan (overwrites initial)
-        fs::write(&plan_path, &revised_plan)
-            .context("Failed to write revised plan file")?;
-        println!("[Saved] {} (revised)", plan_path.display());
+        // Save plan (include outline at the top)
+        let plan_content = format!("# Outline\n\n{}\n\n# Plan\n\n{}", task_outline, revised_plan);
+        fs::write(&plan_path, &plan_content)
+            .context("Failed to write plan file")?;
+        println!("[Saved] {}", plan_path.display());
 
         // Step 4: Actor executes revised plan
         println!("[Actor] Executing plan...");

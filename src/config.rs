@@ -77,6 +77,7 @@ pub struct AgentConfig {
     pub advises_dir: PathBuf,
     pub checks_dir: PathBuf,
     pub hows_dir: PathBuf,
+    pub outlines_dir: PathBuf,
 
     // Pipeline settings
     pub checks: usize,
@@ -100,6 +101,7 @@ impl Default for AgentConfig {
             advises_dir: PathBuf::from("./advises"),
             checks_dir: PathBuf::from("./checks"),
             hows_dir: PathBuf::from("./hows"),
+            outlines_dir: PathBuf::from("./outlines"),
 
             checks: 3,
             threshold: 3,
