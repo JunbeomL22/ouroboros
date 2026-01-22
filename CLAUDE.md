@@ -37,20 +37,31 @@ Ouroboros is a recursive Claude pipeline that processes tasks sequentially throu
 ### Pipeline Flow
 
 For each `task-x.md` in `tasks/`:
-1. **Planner** creates initial plan
+1. **Outliner** creates high-level outline
 2. **Advisor** reviews and provides feedback → writes `advise-x.md`
-3. **Planner** revises based on feedback → writes `plan-x.md`
+3. **Planner** creates detailed plan from outline and advice → writes `plan-x.md`
 4. **Actor** executes plan → writes `result-x.md`
-5. **Checker** validates N times (configurable) → writes `check-x-1.md`, `check-x-2.md`, etc.
-   - Each check file contains detailed feedback on what passed/failed
+5. **Checker** validates N times (configurable) → writes `check-x-y-n.md`
+   - Classifies failures as MINOR or MAJOR issues
    - If passes ≥ threshold → next task
-   - If fails → retry with failed approach context (up to max-retries)
+   - If any MINOR issues exist → **Fixer** runs (even if MAJOR issues also exist)
+6. **Fixer** (triggered when any minor issues exist) → writes `fix-x-y.md`
+   - Fixes minor issues (formatting, style, typos, etc.)
+   - Re-runs checker to verify fixes → writes `check-x-y-n-verified.md`
+   - If verification passes (and no major issues) → task complete
+   - Otherwise → retry with full context (check results, fix output, verification results)
+
+### Issue Classification
+
+The Checker classifies issues into two categories:
+- **MINOR**: formatting, style, missing comments/docs, typos, cosmetic issues
+- **MAJOR**: missing functionality, broken logic, security issues, core requirements not met
 
 ### Key Modules
 
-- `claude.rs` - Spawns `claude` CLI subprocess with `-p` flag for prompts
+- `agent.rs` - Spawns agent CLI subprocess (claude-code or codex)
 - `pipeline.rs` - Main orchestration loop, retry logic, file I/O
-- `roles/` - Four role implementations (planner, advisor, actor, checker)
+- `roles/` - Role implementations (outliner, planner, advisor, actor, checker, fixer, splitter)
 - `config.rs` - CLI argument parsing with clap
 
 ### Data Flow
@@ -60,11 +71,13 @@ For each `task-x.md` in `tasks/`:
 | Directory | File Pattern | Example |
 |-----------|--------------|---------|
 | `tasks/` | `task-{x}.md` | `tasks/task-1.md` |
+| `outlines/` | `outline-{x}-{y}.md` | `outlines/outline-1-1.md` |
 | `plans/` | `plan-{x}-{y}.md` | `plans/plan-1-1.md` |
 | `advises/` | `advise-{x}-{y}.md` | `advises/advise-1-1.md` |
 | `results/` | `result-{x}-{y}.md` | `results/result-1-1.md` |
 | `hows/` | `how-{x}-{y}.md` | `hows/how-1-1.md` |
 | `checks/` | `check-{x}-{y}-{n}.md` | `checks/check-1-1-1.md` |
+| `fixes/` | `fix-{x}-{y}.md` | `fixes/fix-1-1.md` |
 
 Where `{x}` is the task number and `{y}` is the attempt number.
 

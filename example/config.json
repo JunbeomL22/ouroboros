@@ -1,10 +1,11 @@
 {
-  "outliner": { "cli": "codex", "model": "low" },
-  "advisor": { "cli": "codex", "model": "medium" },
+  "outliner": { "cli": "codex", "model": "gpt-codex-high" },
+  "advisor": { "cli": "codex", "model": "gpt-codex-high" },
   "planner": { "cli": "claude-code", "model": "opus" },
   "actor": { "cli": "claude-code", "model": "opus" },
   "checker": { "cli": "codex", "model": "high" },
   "splitter": { "cli": "claude-code", "model": "opus" },
+  "fixer": { "cli": "claude-code", "model": "sonnet" },
 
   "tasks_dir": "./tasks",
   "results_dir": "./results",
@@ -12,6 +13,8 @@
   "advises_dir": "./advises",
   "checks_dir": "./checks",
   "hows_dir": "./hows",
+  "outlines_dir": "./outlines",
+  "fixes_dir": "./fixes",
 
   "checks": 3,
   "threshold": 3,

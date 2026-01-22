@@ -69,6 +69,7 @@ pub struct AgentConfig {
     pub actor: RoleConfig,
     pub checker: RoleConfig,
     pub splitter: RoleConfig,
+    pub fixer: RoleConfig,
 
     // Directory paths
     pub tasks_dir: PathBuf,
@@ -78,6 +79,7 @@ pub struct AgentConfig {
     pub checks_dir: PathBuf,
     pub hows_dir: PathBuf,
     pub outlines_dir: PathBuf,
+    pub fixes_dir: PathBuf,
 
     // Pipeline settings
     pub checks: usize,
@@ -94,6 +96,7 @@ impl Default for AgentConfig {
             actor: RoleConfig::new(AgentCli::ClaudeCode, "opus"),
             checker: RoleConfig::new(AgentCli::ClaudeCode, "sonnet"),
             splitter: RoleConfig::new(AgentCli::ClaudeCode, "opus"),
+            fixer: RoleConfig::new(AgentCli::ClaudeCode, "sonnet"),
 
             tasks_dir: PathBuf::from("./tasks"),
             results_dir: PathBuf::from("./results"),
@@ -102,6 +105,7 @@ impl Default for AgentConfig {
             checks_dir: PathBuf::from("./checks"),
             hows_dir: PathBuf::from("./hows"),
             outlines_dir: PathBuf::from("./outlines"),
+            fixes_dir: PathBuf::from("./fixes"),
 
             checks: 3,
             threshold: 3,
