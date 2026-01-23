@@ -7,6 +7,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Rust toolchain (1.70+)
 - `claude` CLI installed and accessible in PATH
 
+## OpenCode
+
+If you are unsure about OpenCode options or configuration, try:
+- Run `opencode --help` to see available commands and flags
+- Navigate to `./opencode` folder for configuration files and documentation
+
 ## Build & Run
 
 ```bash
@@ -43,13 +49,17 @@ For each `task-x.md` in `tasks/`:
 4. **Actor** executes plan → writes `result-x.md`
 5. **Checker** validates N times (configurable) → writes `check-x-y-n.md`
    - Classifies failures as MINOR or MAJOR issues
-   - If passes ≥ threshold → next task
-   - If any MINOR issues exist → **Fixer** runs (even if MAJOR issues also exist)
-6. **Fixer** (triggered when any minor issues exist) → writes `fix-x-y.md`
-   - Fixes minor issues (formatting, style, typos, etc.)
-   - Re-runs checker to verify fixes → writes `check-x-y-n-verified.md`
-   - If verification passes (and no major issues) → task complete
-   - Otherwise → retry with full context (check results, fix output, verification results)
+   - If passes ≥ threshold and no issues → next task
+6. **Fixer** phase (if issues detected):
+   - **MajorFixer** (if any MAJOR issues) → writes `fix-x-y-major.md`
+     - Has full authority to modify logic/functionality
+     - Also handles any minor issues present
+   - **MinorFixer** (if only MINOR issues) → writes `fix-x-y-minor.md`
+     - Only cosmetic fixes, no logic changes
+7. **Rechecks** (after fixer runs) → writes `recheck-x-y-n.md`
+   - Re-validates with `recheck_threshold` (separate from initial threshold)
+   - If passes ≥ recheck_threshold → task complete
+   - If fails → retry with full context (NO second fixer attempt)
 
 ### Issue Classification
 
@@ -61,7 +71,7 @@ The Checker classifies issues into two categories:
 
 - `agent.rs` - Spawns agent CLI subprocess (claude-code or codex)
 - `pipeline.rs` - Main orchestration loop, retry logic, file I/O
-- `roles/` - Role implementations (outliner, planner, advisor, actor, checker, fixer, splitter)
+- `roles/` - Role implementations (outliner, planner, advisor, actor, checker, minor_fixer, major_fixer, splitter)
 - `config.rs` - CLI argument parsing with clap
 
 ### Data Flow
@@ -77,9 +87,11 @@ The Checker classifies issues into two categories:
 | `results/` | `result-{x}-{y}.md` | `results/result-1-1.md` |
 | `hows/` | `how-{x}-{y}.md` | `hows/how-1-1.md` |
 | `checks/` | `check-{x}-{y}-{n}.md` | `checks/check-1-1-1.md` |
-| `fixes/` | `fix-{x}-{y}.md` | `fixes/fix-1-1.md` |
+| `fixes/` | `fix-{x}-{y}-minor.md` | `fixes/fix-1-1-minor.md` |
+| `fixes/` | `fix-{x}-{y}-major.md` | `fixes/fix-1-1-major.md` |
+| `rechecks/` | `recheck-{x}-{y}-{n}.md` | `rechecks/recheck-1-1-1.md` |
 
-Where `{x}` is the task number and `{y}` is the attempt number.
+Where `{x}` is the task number, `{y}` is the attempt number, and `{n}` is the check run number.
 
 - **Sequential context loading**: For task N (N > 1), the pipeline reads `result-(N-1)-{highest}.md` and `how-(N-1)-{highest}.md` where `{highest}` is the highest attempt number found for that task. This ensures each task only sees context from the immediately preceding task, not all tasks at once.
 - On retry, failed result content is passed to Planner and Advisor for context

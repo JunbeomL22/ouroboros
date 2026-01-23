@@ -10,6 +10,7 @@ use std::path::PathBuf;
 pub enum AgentCli {
     ClaudeCode,
     Codex,
+    OpenCode,
 }
 
 impl Default for AgentCli {
@@ -23,6 +24,7 @@ impl std::fmt::Display for AgentCli {
         match self {
             AgentCli::ClaudeCode => write!(f, "claude-code"),
             AgentCli::Codex => write!(f, "codex"),
+            AgentCli::OpenCode => write!(f, "opencode"),
         }
     }
 }
@@ -34,8 +36,9 @@ impl std::str::FromStr for AgentCli {
         match s.to_lowercase().as_str() {
             "claude-code" | "claude" => Ok(AgentCli::ClaudeCode),
             "codex" => Ok(AgentCli::Codex),
+            "opencode" | "open-code" => Ok(AgentCli::OpenCode),
             _ => Err(format!(
-                "Unknown agent CLI: {}. Supported: claude-code, codex",
+                "Unknown agent CLI: {}. Supported: claude-code, codex, opencode",
                 s
             )),
         }
@@ -69,7 +72,8 @@ pub struct AgentConfig {
     pub actor: RoleConfig,
     pub checker: RoleConfig,
     pub splitter: RoleConfig,
-    pub fixer: RoleConfig,
+    pub minor_fixer: RoleConfig,
+    pub major_fixer: RoleConfig,
 
     // Directory paths
     pub tasks_dir: PathBuf,
@@ -80,10 +84,12 @@ pub struct AgentConfig {
     pub hows_dir: PathBuf,
     pub outlines_dir: PathBuf,
     pub fixes_dir: PathBuf,
+    pub rechecks_dir: PathBuf,
 
     // Pipeline settings
     pub checks: usize,
     pub threshold: usize,
+    pub recheck_threshold: usize,
     pub max_retries: usize,
 }
 
@@ -94,9 +100,10 @@ impl Default for AgentConfig {
             planner: RoleConfig::new(AgentCli::ClaudeCode, "opus"),
             advisor: RoleConfig::new(AgentCli::ClaudeCode, "sonnet"),
             actor: RoleConfig::new(AgentCli::ClaudeCode, "opus"),
-            checker: RoleConfig::new(AgentCli::ClaudeCode, "sonnet"),
+            checker: RoleConfig::new(AgentCli::OpenCode, "minimax/MiniMax-M2.1"),
             splitter: RoleConfig::new(AgentCli::ClaudeCode, "opus"),
-            fixer: RoleConfig::new(AgentCli::ClaudeCode, "sonnet"),
+            minor_fixer: RoleConfig::new(AgentCli::ClaudeCode, "haiku"),
+            major_fixer: RoleConfig::new(AgentCli::ClaudeCode, "opus"),
 
             tasks_dir: PathBuf::from("./tasks"),
             results_dir: PathBuf::from("./results"),
@@ -106,9 +113,11 @@ impl Default for AgentConfig {
             hows_dir: PathBuf::from("./hows"),
             outlines_dir: PathBuf::from("./outlines"),
             fixes_dir: PathBuf::from("./fixes"),
+            rechecks_dir: PathBuf::from("./rechecks"),
 
             checks: 3,
             threshold: 3,
+            recheck_threshold: 3,
             max_retries: 3,
         }
     }

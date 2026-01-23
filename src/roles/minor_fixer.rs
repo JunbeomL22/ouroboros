@@ -2,18 +2,19 @@ use anyhow::Result;
 use crate::agent::call_agent;
 use crate::config::RoleConfig;
 
-pub struct FixerOutput {
+pub struct MinorFixerOutput {
     pub how: String,
     pub result: String,
 }
 
-/// Fix only minor issues identified by the checker
-pub fn fix(
+/// Fix only minor/cosmetic issues identified by the checker
+/// Does NOT modify logic or functionality - only formatting, style, comments, typos, etc.
+pub fn fix_minor(
     role_config: &RoleConfig,
     task: &str,
     original_how: &str,
     minor_issues: &str,
-) -> Result<FixerOutput> {
+) -> Result<MinorFixerOutput> {
     let prompt = format!(
         r#"Original Task:
 {}
@@ -24,19 +25,25 @@ What was done previously:
 Minor issues identified by checker that need fixing:
 {}
 
-Your job is to FIX ONLY THE MINOR ISSUES listed above. Do NOT:
-- Reimplement the entire solution
-- Make major changes
-- Add new features
-- Change core functionality
+Your job is to FIX ONLY THE MINOR/COSMETIC ISSUES listed above.
 
-Focus ONLY on addressing the specific minor issues listed. These are typically:
-- Formatting problems
-- Style inconsistencies
+ALLOWED fixes (do these):
+- Formatting problems (indentation, spacing, line breaks)
+- Style inconsistencies (naming conventions, code style)
 - Missing comments/documentation
-- Typos
+- Typos in strings, comments, or identifiers
 - Small cosmetic improvements
-- Non-critical edge cases
+- Non-critical edge case handling
+
+FORBIDDEN (do NOT do any of these):
+- Changing any logic or functionality
+- Adding new features
+- Fixing bugs or security issues
+- Modifying core behavior
+- Architectural changes
+- Performance optimizations
+
+If an issue requires changing logic, skip it and note that it requires a major fix.
 
 === CRITICAL FILE LOCATION RULES ===
 DO NOT create files in random locations like "fixes/", "output/", or any arbitrary folder.
@@ -49,6 +56,7 @@ Explain HOW you fixed the minor issues:
 - Which issues did you address?
 - What specific changes did you make?
 - Where were the changes applied?
+- Any issues skipped because they require logic changes?
 
 ===RESULT===
 Brief summary of the fixes applied:
@@ -59,23 +67,23 @@ Make sure to include both sections with the exact delimiters shown above."#,
         task, original_how, minor_issues
     );
 
-    let output = call_agent(role_config, "Fixer", &prompt)?;
+    let output = call_agent(role_config, "MinorFixer", &prompt)?;
     parse_fixer_output(&output)
 }
 
-fn parse_fixer_output(output: &str) -> Result<FixerOutput> {
+fn parse_fixer_output(output: &str) -> Result<MinorFixerOutput> {
     let how_marker = "===HOW===";
     let result_marker = "===RESULT===";
 
     let how_start = output.find(how_marker).ok_or_else(|| {
         anyhow::anyhow!(
-            "Fixer output missing ===HOW=== section.\n\nActual output received:\n---\n{}\n---",
+            "MinorFixer output missing ===HOW=== section.\n\nActual output received:\n---\n{}\n---",
             output
         )
     })?;
     let result_start = output.find(result_marker).ok_or_else(|| {
         anyhow::anyhow!(
-            "Fixer output missing ===RESULT=== section.\n\nActual output received:\n---\n{}\n---",
+            "MinorFixer output missing ===RESULT=== section.\n\nActual output received:\n---\n{}\n---",
             output
         )
     })?;
@@ -87,5 +95,5 @@ fn parse_fixer_output(output: &str) -> Result<FixerOutput> {
         .trim()
         .to_string();
 
-    Ok(FixerOutput { how, result })
+    Ok(MinorFixerOutput { how, result })
 }

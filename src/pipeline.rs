@@ -5,7 +5,7 @@ use async_std::task;
 use futures::future::join_all;
 
 use crate::config::AgentConfig;
-use crate::roles::{plan, advise, act, check, CheckResult, IssueSeverity, PrevTaskContext, split, format_task, outline, fix};
+use crate::roles::{plan, advise, act, check, CheckResult, IssueSeverity, PrevTaskContext, split, format_task, outline, fix_minor, fix_major};
 
 /// Context from a completed task, loaded from files
 pub struct TaskContext {
@@ -57,6 +57,8 @@ pub async fn run(config: &AgentConfig) -> Result<()> {
         .context("Failed to create outlines directory")?;
     fs::create_dir_all(&config.fixes_dir)
         .context("Failed to create fixes directory")?;
+    fs::create_dir_all(&config.rechecks_dir)
+        .context("Failed to create rechecks directory")?;
 
     // Check for meta.md and split into tasks if present
     let meta_path = config.tasks_dir.join("meta.md");
@@ -173,7 +175,40 @@ struct AttemptContext {
     how: String,
     check_feedbacks: String,
     fix_context: Option<String>,
-    verification_feedbacks: Option<String>,
+    recheck_feedbacks: Option<String>,
+}
+
+/// Check if any results have major failures
+fn has_major_failures(results: &[(usize, CheckResult)]) -> bool {
+    results.iter().any(|(_, r)| r.severity == IssueSeverity::Major)
+}
+
+/// Check if any results have minor failures
+fn has_minor_failures(results: &[(usize, CheckResult)]) -> bool {
+    results.iter().any(|(_, r)| r.severity == IssueSeverity::Minor)
+}
+
+/// Collect major issues from check results
+fn collect_major_issues(results: &[(usize, CheckResult)]) -> String {
+    results
+        .iter()
+        .filter(|(_, r)| r.severity == IssueSeverity::Major)
+        .map(|(i, r)| format!("--- Check {} (MAJOR) ---\n{}", i, r.feedback))
+        .collect::<Vec<_>>()
+        .join("\n\n")
+}
+
+/// Collect minor issues from check results
+fn collect_minor_issues(results: &[(usize, CheckResult)]) -> String {
+    results
+        .iter()
+        .filter(|(_, r)| r.severity == IssueSeverity::Minor)
+        .map(|(i, r)| {
+            let issues = r.minor_issues.clone().unwrap_or_else(|| r.feedback.clone());
+            format!("--- Check {} (MINOR) ---\n{}", i, issues)
+        })
+        .collect::<Vec<_>>()
+        .join("\n\n")
 }
 
 async fn process_task(
@@ -223,8 +258,8 @@ async fn process_task(
                     if let Some(fix) = &ctx.fix_context {
                         feedback.push_str(&format!("\n\n## Fix Applied\n{}", fix));
                     }
-                    if let Some(verify) = &ctx.verification_feedbacks {
-                        feedback.push_str(&format!("\n\n## Verification Results\n{}", verify));
+                    if let Some(recheck) = &ctx.recheck_feedbacks {
+                        feedback.push_str(&format!("\n\n## Recheck Results\n{}", recheck));
                     }
                     feedback
                 })
@@ -240,14 +275,30 @@ async fn process_task(
             how: &c.how,
             result: &c.result,
         });
-        let task_outline = outline(
+        let task_outline = match outline(
             &config.outliner,
             &task_content,
             failed_results.as_deref(),
             failed_feedbacks.as_deref(),
             prev_task_context,
-        )?;
-        println!("[Outliner] Outline created.");
+        ) {
+            Ok(outline) => {
+                println!("[Outliner] Outline created.");
+                outline
+            }
+            Err(e) => {
+                println!("[Outliner] FAILED: {}", e);
+                previous_attempts.push(AttemptContext {
+                    result: format!("Outliner failed: {}", e),
+                    how: String::new(),
+                    check_feedbacks: String::new(),
+                    fix_context: None,
+                    recheck_feedbacks: None,
+                });
+                attempt += 1;
+                continue;
+            }
+        };
 
         // Save outline file
         fs::write(&outline_path, &task_outline)
@@ -256,8 +307,24 @@ async fn process_task(
 
         // Step 2: Advisor reviews outline
         println!("[Advisor] Reviewing outline...");
-        let advice = advise(&config.advisor, &task_content, &task_outline, failed_results.as_deref(), failed_feedbacks.as_deref())?;
-        println!("[Advisor] Feedback provided.");
+        let advice = match advise(&config.advisor, &task_content, &task_outline, failed_results.as_deref(), failed_feedbacks.as_deref()) {
+            Ok(advice) => {
+                println!("[Advisor] Feedback provided.");
+                advice
+            }
+            Err(e) => {
+                println!("[Advisor] FAILED: {}", e);
+                previous_attempts.push(AttemptContext {
+                    result: format!("Advisor failed: {}", e),
+                    how: String::new(),
+                    check_feedbacks: String::new(),
+                    fix_context: None,
+                    recheck_feedbacks: None,
+                });
+                attempt += 1;
+                continue;
+            }
+        };
 
         // Save advise file
         fs::write(&advise_path, &advice)
@@ -270,15 +337,31 @@ async fn process_task(
             how: &c.how,
             result: &c.result,
         });
-        let revised_plan = plan(
+        let revised_plan = match plan(
             &config.planner,
             &task_content,
             failed_results.as_deref(),
             failed_feedbacks.as_deref(),
             Some(&format!("Outline:\n{}\n\nAdvisor Feedback:\n{}", task_outline, advice)),
             prev_task_context_for_plan,
-        )?;
-        println!("[Planner] Plan created.");
+        ) {
+            Ok(plan) => {
+                println!("[Planner] Plan created.");
+                plan
+            }
+            Err(e) => {
+                println!("[Planner] FAILED: {}", e);
+                previous_attempts.push(AttemptContext {
+                    result: format!("Planner failed: {}", e),
+                    how: String::new(),
+                    check_feedbacks: String::new(),
+                    fix_context: None,
+                    recheck_feedbacks: None,
+                });
+                attempt += 1;
+                continue;
+            }
+        };
 
         // Save plan (include outline at the top)
         let plan_content = format!("# Outline\n\n{}\n\n# Plan\n\n{}", task_outline, revised_plan);
@@ -288,8 +371,24 @@ async fn process_task(
 
         // Step 4: Actor executes revised plan
         println!("[Actor] Executing plan...");
-        let actor_output = act(&config.actor, &task_content, &revised_plan)?;
-        println!("[Actor] Execution complete.");
+        let actor_output = match act(&config.actor, &task_content, &revised_plan) {
+            Ok(output) => {
+                println!("[Actor] Execution complete.");
+                output
+            }
+            Err(e) => {
+                println!("[Actor] FAILED: {}", e);
+                previous_attempts.push(AttemptContext {
+                    result: format!("Actor failed: {}", e),
+                    how: String::new(),
+                    check_feedbacks: String::new(),
+                    fix_context: None,
+                    recheck_feedbacks: None,
+                });
+                attempt += 1;
+                continue;
+            }
+        };
 
         // Save result file
         fs::write(&result_path, &actor_output.result)
@@ -370,122 +469,199 @@ async fn process_task(
         println!("[Checker] Result: {}/{} passed (threshold: {})",
                  passes, config.checks, config.threshold);
 
-        // Check if any checks failed with minor issues
-        let has_minor_failures = check_results
-            .iter()
-            .any(|(_, r)| r.severity == IssueSeverity::Minor);
+        // Determine issue types
+        let has_major = has_major_failures(&check_results);
+        let has_minor = has_minor_failures(&check_results);
 
-        // Track fix and verification context
+        // Track fix and recheck context
         let mut fix_context: Option<String> = None;
-        let mut verification_feedbacks: Vec<String> = Vec::new();
-        let mut final_passes = passes;
+        let mut recheck_feedbacks: Vec<String> = Vec::new();
+        let mut combined_how = actor_output.how.clone();
 
-        // If there are any minor issues, run fixer (even if threshold already passed)
-        if has_minor_failures {
-            println!("[Fixer] Minor issues detected. Attempting to fix...");
+        // Early success check - all passed with no issues
+        if passes >= config.threshold && !has_major && !has_minor {
+            println!("[SUCCESS] Task completed - all checks passed!");
+            return Ok(());
+        }
 
-            // Collect minor issues, falling back to full feedback if specific issues weren't extracted
-            let combined_minor_issues: String = check_results
-                .iter()
-                .filter(|(_, r)| r.severity == IssueSeverity::Minor)
-                .map(|(_, r)| r.minor_issues.clone().unwrap_or_else(|| r.feedback.clone()))
-                .collect::<Vec<_>>()
-                .join("\n\n");
-            let fix_path = config.fixes_dir.join(format!("fix-{}-{}.md", task_num, attempt));
+        // Determine which fixer to run based on issue severity
+        let fixer_ran = if has_major {
+            // MAJOR issues present → run major_fixer (handles both major and minor)
+            println!("[MajorFixer] Major issues detected. Attempting to fix...");
 
-            match fix(&config.fixer, &task_content, &actor_output.how, &combined_minor_issues) {
+            let major_issues = collect_major_issues(&check_results);
+            let minor_issues = if has_minor {
+                Some(collect_minor_issues(&check_results))
+            } else {
+                None
+            };
+
+            let fix_path = config.fixes_dir.join(format!("fix-{}-{}-major.md", task_num, attempt));
+
+            match fix_major(
+                &config.major_fixer,
+                &task_content,
+                &revised_plan,
+                &actor_output.how,
+                &major_issues,
+                minor_issues.as_deref(),
+            ) {
                 Ok(fixer_output) => {
+                    println!("[MajorFixer] Fix complete.");
                     // Save fixer output
                     let fix_content = format!(
-                        "# Fix Result\n\n## How\n{}\n\n## Result\n{}",
+                        "# Major Fix Result\n\n## How\n{}\n\n## Result\n{}",
                         fixer_output.how, fixer_output.result
                     );
                     fs::write(&fix_path, &fix_content)
-                        .context("Failed to write fix file")?;
+                        .context("Failed to write major fix file")?;
                     println!("[Saved] {}", fix_path.display());
 
                     // Store fix context for retry
                     fix_context = Some(format!(
-                        "Minor issues fixed:\n{}\n\nHow fixed:\n{}\n\nResult:\n{}",
-                        combined_minor_issues, fixer_output.how, fixer_output.result
+                        "Major issues:\n{}\n\nMinor issues:\n{}\n\nHow fixed:\n{}\n\nResult:\n{}",
+                        major_issues,
+                        minor_issues.as_deref().unwrap_or("None"),
+                        fixer_output.how,
+                        fixer_output.result
                     ));
 
-                    // Re-run checker to verify fixes
-                    println!("[Checker] Verifying fixes...");
-
-                    // Combine original how with fixer how for verification
-                    let combined_how = format!(
-                        "{}\n\n--- Fixes Applied ---\n{}",
+                    // Update combined_how for rechecks
+                    combined_how = format!(
+                        "{}\n\n--- Major Fixes Applied ---\n{}",
                         actor_output.how, fixer_output.how
                     );
 
-                    let verify_config = config.checker.clone();
-                    let verify_futures: Vec<_> = (1..=config.checks)
-                        .map(|i| {
-                            let task_clone = task_content.clone();
-                            let how_clone = combined_how.clone();
-                            let checker_clone = verify_config.clone();
-                            task::spawn_blocking(move || (i, check(&checker_clone, &task_clone, &how_clone)))
-                        })
-                        .collect();
-
-                    let verify_results = join_all(verify_futures).await;
-
-                    let mut verify_passes = 0;
-                    for result in &verify_results {
-                        match result {
-                            (i, Ok(check_result)) => {
-                                if check_result.passed {
-                                    verify_passes += 1;
-                                    println!("  Verify {}: PASS", i);
-                                } else {
-                                    let severity_str = match &check_result.severity {
-                                        IssueSeverity::Minor => "FAIL_MINOR",
-                                        IssueSeverity::Major => "FAIL_MAJOR",
-                                        IssueSeverity::None => "FAIL",
-                                    };
-                                    println!("  Verify {}: {}", i, severity_str);
-                                }
-                            }
-                            (i, Err(e)) => {
-                                println!("  Verify {}: ERROR - {}", i, e);
-                            }
-                        }
-                    }
-
-                    // Save verification results and collect feedback
-                    for (i, result) in &verify_results {
-                        if let Ok(check_result) = result {
-                            let verify_path = config.checks_dir.join(
-                                format!("check-{}-{}-{}-verified.md", task_num, attempt, i)
-                            );
-                            let status = if check_result.passed { "PASS" } else { "FAIL" };
-                            let content = format!(
-                                "# Verification Check Result: {}\n\n{}",
-                                status, check_result.feedback
-                            );
-                            fs::write(&verify_path, &content)
-                                .context("Failed to write verification check file")?;
-                            verification_feedbacks.push(check_result.feedback.clone());
-                        }
-                    }
-
-                    println!("[Checker] Verification: {}/{} passed (threshold: {})",
-                             verify_passes, config.checks, config.threshold);
-
-                    // Use verification passes as the final count
-                    final_passes = verify_passes;
+                    true
                 }
                 Err(e) => {
-                    println!("[Fixer] Failed to fix minor issues: {}. Using original check results...", e);
+                    println!("[MajorFixer] Failed to fix issues: {}", e);
+                    false
                 }
             }
-        }
+        } else if has_minor {
+            // Only MINOR issues → run minor_fixer
+            println!("[MinorFixer] Minor issues detected. Attempting to fix...");
 
-        // Check if task completed (either original passes or verification passes met threshold)
-        if final_passes >= config.threshold {
-            println!("[SUCCESS] Task completed!");
-            return Ok(());
+            let minor_issues = collect_minor_issues(&check_results);
+            let fix_path = config.fixes_dir.join(format!("fix-{}-{}-minor.md", task_num, attempt));
+
+            match fix_minor(
+                &config.minor_fixer,
+                &task_content,
+                &actor_output.how,
+                &minor_issues,
+            ) {
+                Ok(fixer_output) => {
+                    println!("[MinorFixer] Fix complete.");
+                    // Save fixer output
+                    let fix_content = format!(
+                        "# Minor Fix Result\n\n## How\n{}\n\n## Result\n{}",
+                        fixer_output.how, fixer_output.result
+                    );
+                    fs::write(&fix_path, &fix_content)
+                        .context("Failed to write minor fix file")?;
+                    println!("[Saved] {}", fix_path.display());
+
+                    // Store fix context for retry
+                    fix_context = Some(format!(
+                        "Minor issues:\n{}\n\nHow fixed:\n{}\n\nResult:\n{}",
+                        minor_issues, fixer_output.how, fixer_output.result
+                    ));
+
+                    // Update combined_how for rechecks
+                    combined_how = format!(
+                        "{}\n\n--- Minor Fixes Applied ---\n{}",
+                        actor_output.how, fixer_output.how
+                    );
+
+                    true
+                }
+                Err(e) => {
+                    println!("[MinorFixer] Failed to fix issues: {}", e);
+                    false
+                }
+            }
+        } else {
+            // No issues detected but threshold not met - skip fixer
+            false
+        };
+
+        // Run rechecks only if fixer ran successfully
+        if fixer_ran {
+            println!("[Recheck] Running {} rechecks in parallel (threshold: {})...",
+                     config.checks, config.recheck_threshold);
+
+            let recheck_config = config.checker.clone();
+            let recheck_futures: Vec<_> = (1..=config.checks)
+                .map(|i| {
+                    let task_clone = task_content.clone();
+                    let how_clone = combined_how.clone();
+                    let checker_clone = recheck_config.clone();
+                    task::spawn_blocking(move || (i, check(&checker_clone, &task_clone, &how_clone)))
+                })
+                .collect();
+
+            let recheck_results = join_all(recheck_futures).await;
+
+            let mut recheck_passes = 0;
+            for result in &recheck_results {
+                match result {
+                    (i, Ok(check_result)) => {
+                        if check_result.passed {
+                            recheck_passes += 1;
+                            println!("  Recheck {}: PASS", i);
+                        } else {
+                            let severity_str = match &check_result.severity {
+                                IssueSeverity::Minor => "FAIL_MINOR",
+                                IssueSeverity::Major => "FAIL_MAJOR",
+                                IssueSeverity::None => "FAIL",
+                            };
+                            println!("  Recheck {}: {}", i, severity_str);
+                        }
+                    }
+                    (i, Err(e)) => {
+                        println!("  Recheck {}: ERROR - {}", i, e);
+                    }
+                }
+            }
+
+            // Save recheck results to rechecks/ directory
+            for (i, result) in &recheck_results {
+                if let Ok(check_result) = result {
+                    let recheck_path = config.rechecks_dir.join(
+                        format!("recheck-{}-{}-{}.md", task_num, attempt, i)
+                    );
+                    let status = if check_result.passed {
+                        "PASS"
+                    } else {
+                        match &check_result.severity {
+                            IssueSeverity::Minor => "FAIL_MINOR",
+                            IssueSeverity::Major => "FAIL_MAJOR",
+                            IssueSeverity::None => "FAIL",
+                        }
+                    };
+                    let content = format!(
+                        "# Recheck Result: {}\n\n{}",
+                        status, check_result.feedback
+                    );
+                    fs::write(&recheck_path, &content)
+                        .context("Failed to write recheck file")?;
+                    recheck_feedbacks.push(check_result.feedback.clone());
+                }
+            }
+
+            println!("[Recheck] Result: {}/{} passed (threshold: {})",
+                     recheck_passes, config.checks, config.recheck_threshold);
+
+            // Check if rechecks passed
+            if recheck_passes >= config.recheck_threshold {
+                println!("[SUCCESS] Task completed after fix and recheck!");
+                return Ok(());
+            }
+
+            // Recheck failed → go to retry (NO second fixer attempt)
+            println!("[Recheck] Failed. Going directly to retry (no second fixer)...");
         }
 
         // Failed - collect all context for this attempt
@@ -496,11 +672,11 @@ async fn process_task(
             .collect::<Vec<_>>()
             .join("\n\n");
 
-        let verification_section: Option<String> = if !verification_feedbacks.is_empty() {
-            Some(verification_feedbacks
+        let recheck_section: Option<String> = if !recheck_feedbacks.is_empty() {
+            Some(recheck_feedbacks
                 .iter()
                 .enumerate()
-                .map(|(i, f)| format!("--- Verification Check {} ---\n{}", i + 1, f))
+                .map(|(i, f)| format!("--- Recheck {} ---\n{}", i + 1, f))
                 .collect::<Vec<_>>()
                 .join("\n\n"))
         } else {
@@ -513,7 +689,7 @@ async fn process_task(
             how: actor_output.how,
             check_feedbacks: combined_check_feedbacks,
             fix_context,
-            verification_feedbacks: verification_section,
+            recheck_feedbacks: recheck_section,
         });
 
         attempt += 1;
