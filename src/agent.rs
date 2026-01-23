@@ -141,15 +141,7 @@ fn call_opencode(role: &str, prompt: &str, model: &str) -> Result<String> {
 
     #[cfg(windows)]
     let mut child = Command::new("cmd")
-        .args([
-            "/C",
-            "opencode",
-            "--model",
-            model,
-            "--dangerously-skip-permissions",
-            "-p",
-            "-",
-        ])
+        .args(["/C", "opencode", "run", "--model", model, "-"])
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -158,13 +150,7 @@ fn call_opencode(role: &str, prompt: &str, model: &str) -> Result<String> {
 
     #[cfg(not(windows))]
     let mut child = Command::new("opencode")
-        .args([
-            "--model",
-            model,
-            "--dangerously-skip-permissions",
-            "-p",
-            "-",
-        ])
+        .args(["run", "--model", model, "-"])
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -182,8 +168,15 @@ fn call_opencode(role: &str, prompt: &str, model: &str) -> Result<String> {
         .context("Failed to wait for opencode CLI")?;
 
     if !output.status.success() {
+        let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
-        anyhow::bail!("OpenCode CLI failed: {}", stderr);
+        let exit_code = output.status.code().map(|c| c.to_string()).unwrap_or_else(|| "unknown".to_string());
+        anyhow::bail!(
+            "OpenCode CLI failed (exit code {}):\nstdout: {}\nstderr: {}",
+            exit_code,
+            stdout,
+            stderr
+        );
     }
 
     let response =

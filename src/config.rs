@@ -10,6 +10,7 @@ use std::path::PathBuf;
 pub enum AgentCli {
     ClaudeCode,
     Codex,
+    #[serde(alias = "opencode")]
     OpenCode,
 }
 

@@ -10,7 +10,9 @@
       "Bash(npm i:*)",
       "WebSearch",
       "WebFetch(domain:github.com)",
-      "Bash(cargo check:*)"
+      "Bash(cargo check:*)",
+      "Bash(opencode --help:*)",
+      "Bash(opencode run --help:*)"
     ]
   }
 }
