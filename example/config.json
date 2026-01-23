@@ -1,25 +1,25 @@
 {
   "splitter": { "cli": "claude-code", "model": "opus" },
-  "outliner": { "cli": "opencode", "model": "minimax/MiniMax-M2.1" },
-  "advisor": { "cli": "opencode", "model": "minimax/MiniMax-M2.1" },
+  "outliner": { "cli": "opencode", "model": "minimax.io/MiniMax-M2.1" },
+  "advisor": { "cli": "opencode", "model": "minimax.io/MiniMax-M2.1" },
   "planner": { "cli": "claude-code", "model": "opus" },
   "actor": { "cli": "claude-code", "model": "opus" },
   "checker": { "cli": "claude-code", "model": "haiku" },
-  "minor_fixer": { "cli": "opencode", "model": "minimax/MiniMax-M2.1" },
+  "minor_fixer": { "cli": "opencode", "model": "minimax.io/MiniMax-M2.1" },
   "major_fixer": { "cli": "claude-code", "model": "opus" },
 
-  "tasks_dir": "./example/tasks",
-  "results_dir": "./example/results",
-  "plans_dir": "./example/plans",
-  "advises_dir": "./example/advises",
-  "checks_dir": "./example/checks",
-  "hows_dir": "./example/hows",
-  "outlines_dir": "./example/outlines",
-  "fixes_dir": "./example/fixes",
-  "rechecks_dir": "./example/rechecks",
+  "tasks_dir": "./tasks",
+  "results_dir": "./results",
+  "plans_dir": "./plans",
+  "advises_dir": "./advises",
+  "checks_dir": "./checks",
+  "hows_dir": "./hows",
+  "outlines_dir": "./outlines",
+  "fixes_dir": "./fixes",
+  "rechecks_dir": "./rechecks",
 
   "checks": 3,
   "threshold": 3,
   "recheck_threshold": 3,
-  "max_retries": 3
+  "max_retries": 4
 }

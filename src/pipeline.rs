@@ -223,8 +223,8 @@ async fn process_task(
     let mut attempt = 1;
     let mut previous_attempts: Vec<AttemptContext> = Vec::new();
 
-    while attempt <= config.max_retries {
-        println!("\n--- Attempt {} of {} ---", attempt, config.max_retries);
+    while attempt <= config.max_tries {
+        println!("\n--- Attempt {} of {} ---", attempt, config.max_tries);
 
         // Compute output paths with task number and attempt number
         let outline_path = config.outlines_dir.join(format!("outline-{}-{}.md", task_num, attempt));
@@ -694,13 +694,13 @@ async fn process_task(
 
         attempt += 1;
 
-        if attempt <= config.max_retries {
+        if attempt <= config.max_tries {
             println!("[RETRY] Task failed. Retrying with knowledge of all {} previous attempt(s)...", previous_attempts.len());
         }
     }
 
     anyhow::bail!(
         "Task failed after {} retries.",
-        config.max_retries
+        config.max_tries
     );
 }

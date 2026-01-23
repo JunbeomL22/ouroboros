@@ -35,8 +35,8 @@ async fn main() {
     println!("  rechecks: {:?}", config.rechecks_dir);
     println!("  hows:     {:?}", config.hows_dir);
     println!("  fixes:    {:?}", config.fixes_dir);
-    println!("Settings: checks={}, threshold={}, recheck_threshold={}, max_retries={}",
-             config.checks, config.threshold, config.recheck_threshold, config.max_retries);
+    println!("Settings: checks={}, threshold={}, recheck_threshold={}, max_tries={}",
+             config.checks, config.threshold, config.recheck_threshold, config.max_tries);
 
     if let Err(e) = create_directories(&config) {
         eprintln!("Failed to create directories: {}", e);

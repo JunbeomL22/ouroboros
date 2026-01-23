@@ -91,7 +91,7 @@ pub struct AgentConfig {
     pub checks: usize,
     pub threshold: usize,
     pub recheck_threshold: usize,
-    pub max_retries: usize,
+    pub max_tries: usize,
 }
 
 impl Default for AgentConfig {
@@ -119,7 +119,7 @@ impl Default for AgentConfig {
             checks: 3,
             threshold: 3,
             recheck_threshold: 3,
-            max_retries: 3,
+            max_tries: 3,
         }
     }
 }
