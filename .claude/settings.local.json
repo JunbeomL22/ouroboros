@@ -4,15 +4,16 @@
       "Bash(cargo build:*)",
       "Bash(rustup update:*)",
       "Bash(git pull:*)",
-      "Bash(MINIMAX_API_KEY=\"sk-cp-XvV5RUIgZ4_JdWG88i5U06GSbiVz96b6bcVcso3wA_Gj4qjizYfsjpgDNYuf3vawlJdF1sQ5cl_G6hh1obeCdIjohwE848Dry2kOp_EtYXYkcGgGECPrs2I\" PYTHONIOENCODING=\"utf-8\" vibe:*)",
-      "Bash(setx MINIMAX_API_KEY \"sk-cp-XvV5RUIgZ4_JdWG88i5U06GSbiVz96b6bcVcso3wA_Gj4qjizYfsjpgDNYuf3vawlJdF1sQ5cl_G6hh1obeCdIjohwE848Dry2kOp_EtYXYkcGgGECPrs2I\")",
       "WebFetch(domain:platform.minimax.io)",
       "Bash(npm i:*)",
       "WebSearch",
       "WebFetch(domain:github.com)",
       "Bash(cargo check:*)",
       "Bash(opencode --help:*)",
-      "Bash(opencode run --help:*)"
+      "Bash(opencode run --help:*)",
+      "Bash(opencode models:*)",
+      "Bash(opencode auth:*)",
+      "Bash(attrib:*)"
     ]
   }
 }
