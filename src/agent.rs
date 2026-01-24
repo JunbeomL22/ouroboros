@@ -141,7 +141,7 @@ fn call_opencode(role: &str, prompt: &str, model: &str) -> Result<String> {
 
     #[cfg(windows)]
     let mut child = Command::new("cmd")
-        .args(["/C", "opencode", "run", "--model", model, "-"])
+        .args(["/C", "opencode", "run", "--model", model, "--agent", "build", "-"])
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -150,7 +150,7 @@ fn call_opencode(role: &str, prompt: &str, model: &str) -> Result<String> {
 
     #[cfg(not(windows))]
     let mut child = Command::new("opencode")
-        .args(["run", "--model", model, "-"])
+        .args(["run", "--model", model, "--agent", "build", "-"])
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())

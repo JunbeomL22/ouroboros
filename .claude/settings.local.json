@@ -13,7 +13,8 @@
       "Bash(opencode run --help:*)",
       "Bash(opencode models:*)",
       "Bash(opencode auth:*)",
-      "Bash(attrib:*)"
+      "Bash(attrib:*)",
+      "WebFetch(domain:models.dev)"
     ]
   }
 }

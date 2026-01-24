@@ -1,11 +1,11 @@
 {
   "splitter": { "cli": "claude-code", "model": "opus" },
-  "outliner": { "cli": "opencode", "model": "minimax.io/MiniMax-M2.1" },
-  "advisor": { "cli": "opencode", "model": "minimax.io/MiniMax-M2.1" },
+  "outliner": { "cli": "opencode", "model": "minimax-coding-plan/MiniMax-M2.1" },
+  "advisor": { "cli": "opencode", "model": "minimax-coding-plan/MiniMax-M2.1" },
   "planner": { "cli": "claude-code", "model": "opus" },
   "actor": { "cli": "claude-code", "model": "opus" },
   "checker": { "cli": "claude-code", "model": "haiku" },
-  "minor_fixer": { "cli": "opencode", "model": "minimax.io/MiniMax-M2.1" },
+  "minor_fixer": { "cli": "opencode", "model": "minimax-coding-plan/MiniMax-M2.1" },
   "major_fixer": { "cli": "claude-code", "model": "opus" },
 
   "tasks_dir": "./tasks",
