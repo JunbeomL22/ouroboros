@@ -29,6 +29,7 @@ pub fn call_agent(role_config: &RoleConfig, role: &str, prompt: &str) -> Result<
         AgentCli::ClaudeCode => call_claude_code(role, prompt, &role_config.model, &role_config.provider),
         AgentCli::Codex => call_codex(role, prompt, &role_config.model),
         AgentCli::OpenCode => call_opencode(role, prompt, &role_config.model),
+        AgentCli::BrowserUse => call_browser_use(role, prompt, &role_config.model),
     }
 }
 
@@ -226,6 +227,62 @@ fn call_opencode(role: &str, prompt: &str, model: &str) -> Result<String> {
 
     let response =
         String::from_utf8(output.stdout).context("Failed to parse opencode output as UTF-8")?;
+
+    Ok(response.trim().to_string())
+}
+
+/// Call browser_use Python wrapper for web automation
+pub fn call_browser_use(role: &str, prompt: &str, _model: &str) -> Result<String> {
+    let full_prompt = format!(
+        "You are acting as a {}. Respond only with your output, no explanations.\n\n{}",
+        role, prompt
+    );
+
+    // Get the path to the wrapper script (relative to current working directory)
+    let script_path = "scripts/browser_use_wrapper.py";
+
+    #[cfg(windows)]
+    let mut child = Command::new("python")
+        .args([script_path])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .context("Failed to spawn browser_use wrapper (python)")?;
+
+    #[cfg(not(windows))]
+    let mut child = Command::new("python3")
+        .args([script_path])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .context("Failed to spawn browser_use wrapper (python3)")?;
+
+    if let Some(mut stdin) = child.stdin.take() {
+        stdin
+            .write_all(full_prompt.as_bytes())
+            .context("Failed to write prompt to browser_use stdin")?;
+    }
+
+    let output = child
+        .wait_with_output()
+        .context("Failed to wait for browser_use wrapper")?;
+
+    if !output.status.success() {
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        let exit_code = output.status.code().map(|c| c.to_string()).unwrap_or_else(|| "unknown".to_string());
+        anyhow::bail!(
+            "browser_use wrapper failed (exit code {}):\nstdout: {}\nstderr: {}",
+            exit_code,
+            stdout,
+            stderr
+        );
+    }
+
+    let response =
+        String::from_utf8(output.stdout).context("Failed to parse browser_use output as UTF-8")?;
 
     Ok(response.trim().to_string())
 }

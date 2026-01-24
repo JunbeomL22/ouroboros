@@ -37,22 +37,46 @@ pub fn plan(
         None => String::new(),
     };
 
+    let browser_instructions = r#"
+
+=== BROWSER AUTOMATION ===
+If any step requires web browser interaction (navigating websites, filling forms,
+clicking buttons, extracting web content, screenshots), wrap those steps with
+[BROWSER] and [/BROWSER] markers:
+
+Example:
+## Step 3: Fetch data from website
+[BROWSER]
+Navigate to https://example.com/data
+Extract the data table
+Take screenshot
+[/BROWSER]
+
+Only use browser markers for genuine browser automation needs."#;
+
+    let important_note = format!(
+        "=== IMPORTANT ===
+- DO NOT create task-*.md files in the current directory or any other location. The task files are read-only inputs managed by the system.
+- DO NOT execute any actions, modify files, run commands, or implement anything. Your ONLY job is to output a written plan. The Actor role will execute the plan later.{}",
+        browser_instructions
+    );
+
     let prompt = match (failed_how, advisor_feedback) {
         (Some(how), Some(feedback)) => format!(
-            "Task:\n{}{}\n\nPrevious failed approach:\n{}{}{}\n\nAdvisor feedback on your previous plan:\n{}\n\nCreate a revised plan considering what failed, the checker feedback, and the advisor's feedback.\n\n=== IMPORTANT ===\n- DO NOT create task-*.md files in the current directory or any other location. The task files are read-only inputs managed by the system.\n- DO NOT execute any actions, modify files, run commands, or implement anything. Your ONLY job is to output a written plan. The Actor role will execute the plan later.",
-            task, context, how, plan_context, check_context, feedback
+            "Task:\n{}{}\n\nPrevious failed approach:\n{}{}{}\n\nAdvisor feedback on your previous plan:\n{}\n\nCreate a revised plan considering what failed, the checker feedback, and the advisor's feedback.\n\n{}",
+            task, context, how, plan_context, check_context, feedback, important_note
         ),
         (Some(how), None) => format!(
-            "Task:\n{}{}\n\nPrevious failed approach:\n{}{}{}\n\nCreate a new plan that avoids the mistakes in the previous approach.\n\n=== IMPORTANT ===\n- DO NOT create task-*.md files in the current directory or any other location. The task files are read-only inputs managed by the system.\n- DO NOT execute any actions, modify files, run commands, or implement anything. Your ONLY job is to output a written plan. The Actor role will execute the plan later.",
-            task, context, how, plan_context, check_context
+            "Task:\n{}{}\n\nPrevious failed approach:\n{}{}{}\n\nCreate a new plan that avoids the mistakes in the previous approach.\n\n{}",
+            task, context, how, plan_context, check_context, important_note
         ),
         (None, Some(feedback)) => format!(
-            "Task:\n{}{}\n\nAdvisor feedback:\n{}\n\nRevise your plan based on the advisor's feedback.\n\n=== IMPORTANT ===\n- DO NOT create task-*.md files in the current directory or any other location. The task files are read-only inputs managed by the system.\n- DO NOT execute any actions, modify files, run commands, or implement anything. Your ONLY job is to output a written plan. The Actor role will execute the plan later.",
-            task, context, feedback
+            "Task:\n{}{}\n\nAdvisor feedback:\n{}\n\nRevise your plan based on the advisor's feedback.\n\n{}",
+            task, context, feedback, important_note
         ),
         (None, None) => format!(
-            "Task:\n{}{}\n\nCreate a detailed step-by-step plan to accomplish this task.\n\n=== IMPORTANT ===\n- DO NOT create task-*.md files in the current directory or any other location. The task files are read-only inputs managed by the system.\n- DO NOT execute any actions, modify files, run commands, or implement anything. Your ONLY job is to output a written plan. The Actor role will execute the plan later.",
-            task, context
+            "Task:\n{}{}\n\nCreate a detailed step-by-step plan to accomplish this task.\n\n{}",
+            task, context, important_note
         ),
     };
 
