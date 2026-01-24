@@ -14,7 +14,10 @@
       "Bash(opencode models:*)",
       "Bash(opencode auth:*)",
       "Bash(attrib:*)",
-      "WebFetch(domain:models.dev)"
+      "WebFetch(domain:models.dev)",
+      "mcp__MiniMax__web_search",
+      "WebFetch(domain:imfing.com)",
+      "WebFetch(domain:aiengineerguide.com)"
     ]
   }
 }

@@ -555,6 +555,7 @@ dependencies = [
  "async-std",
  "clap",
  "futures",
+ "once_cell",
  "serde",
  "serde_json",
  "toml",

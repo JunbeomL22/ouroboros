@@ -7,3 +7,8 @@
 /example/outlines
 /example/plans
 /example/results
+/example/rechecks
+
+# Secrets (API keys)
+secrets.json
+**/secrets.json

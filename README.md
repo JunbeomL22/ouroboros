@@ -112,14 +112,17 @@ cargo build --release
 ## Usage
 
 ```bash
-# Run with defaults
+# Run with defaults (uses ./config.json and ./secrets.json)
 cargo run
 
 # Show all options
 cargo run -- --help
 
 # Custom configuration
-cargo run -- -c ./my-config.json
+cargo run -- -c ./example/config.json
+
+# Specify both config and secrets
+cargo run -- -c ./example/config.json -s ./example/secrets.json
 ```
 
 ## Configuration
@@ -136,15 +139,18 @@ The pipeline is configured via a JSON file. By default, it looks for `config.jso
 
 ### Example config.json
 
+Each role can use a different CLI and provider combination:
+
 ```json
 {
-  "outliner": { "cli": "claude-code", "model": "haiku" },
-  "planner": { "cli": "claude-code", "model": "opus" },
-  "advisor": { "cli": "claude-code", "model": "sonnet" },
-  "actor": { "cli": "claude-code", "model": "opus" },
-  "checker": { "cli": "claude-code", "model": "sonnet" },
-  "fixer": { "cli": "claude-code", "model": "sonnet" },
-  "splitter": { "cli": "claude-code", "model": "opus" },
+  "splitter": { "cli": "claude-code", "model": "opus", "provider": "anthropic" },
+  "outliner": { "cli": "claude-code", "model": "MiniMax-M2.1", "provider": "minimax" },
+  "advisor": { "cli": "claude-code", "model": "MiniMax-M2.1", "provider": "minimax" },
+  "planner": { "cli": "claude-code", "model": "opus", "provider": "anthropic" },
+  "actor": { "cli": "claude-code", "model": "opus", "provider": "anthropic" },
+  "checker": { "cli": "claude-code", "model": "MiniMax-M2.1", "provider": "minimax" },
+  "minor_fixer": { "cli": "codex", "model": "gpt-5.2-codex" },
+  "major_fixer": { "cli": "claude-code", "model": "opus", "provider": "anthropic" },
 
   "tasks_dir": "./tasks",
   "results_dir": "./results",
@@ -154,12 +160,24 @@ The pipeline is configured via a JSON file. By default, it looks for `config.jso
   "hows_dir": "./hows",
   "outlines_dir": "./outlines",
   "fixes_dir": "./fixes",
+  "rechecks_dir": "./rechecks",
 
-  "checks": 5,
-  "threshold": 4,
-  "max_retries": 3
+  "checks": 3,
+  "threshold": 3,
+  "recheck_threshold": 3,
+  "max_retries": 4
 }
 ```
+
+#### Role Configuration Fields
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `cli` | Yes | CLI to use: `claude-code`, `codex`, or `opencode` |
+| `model` | Yes | Model name (e.g., `opus`, `sonnet`, `MiniMax-M2.1`, `gpt-5.2-codex`) |
+| `provider` | No | API provider for `claude-code` only: `anthropic` (default) or `minimax` |
+
+**Note:** The `provider` field is only used with `claude-code` CLI. For `codex` and `opencode`, omit it.
 
 ### Configuration Options
 
@@ -181,8 +199,49 @@ The pipeline is configured via a JSON file. By default, it looks for `config.jso
 
 | CLI | Description |
 |-----|-------------|
-| `claude-code` | Claude Code CLI |
+| `claude-code` | Claude Code CLI (supports multiple providers) |
 | `codex` | OpenAI Codex CLI |
+| `opencode` | OpenCode CLI |
+
+### Supported Providers (for claude-code)
+
+| Provider | Description |
+|----------|-------------|
+| `anthropic` | Default Anthropic API |
+| `minimax` | MiniMax M2.1 via Anthropic-compatible API |
+
+### secrets.json
+
+To use non-default providers (e.g., MiniMax), create a `secrets.json` file:
+
+```bash
+# Secrets path priority:
+# 1. CLI option: -s ./path/to/secrets.json
+# 2. Same directory as config.json
+# 3. Current working directory: ./secrets.json
+```
+
+```json
+{
+  "minimax": {
+    "api_key": "your-minimax-api-key-here",
+    "base_url": "https://api.minimax.io/anthropic"
+  },
+  "anthropic": {
+    "api_key": ""
+  }
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `minimax.api_key` | Your MiniMax API key from [platform.minimax.io](https://platform.minimax.io) |
+| `minimax.base_url` | MiniMax API endpoint (default: `https://api.minimax.io/anthropic`) |
+| `anthropic.api_key` | Optional. Leave empty to use existing Claude Code authentication |
+
+**Important:** Add `secrets.json` to your `.gitignore` to avoid committing API keys.
+
+See `example/secrets.json` for a template.
 
 ## Directory Structure
 

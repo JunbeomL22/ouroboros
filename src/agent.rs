@@ -1,50 +1,95 @@
-use crate::config::{AgentCli, RoleConfig};
+use crate::config::{AgentCli, Provider, RoleConfig};
+use crate::secrets::Secrets;
 use anyhow::{Context, Result};
+use once_cell::sync::Lazy;
 use std::io::Write;
+use std::path::Path;
 use std::process::{Command, Stdio};
+use std::sync::RwLock;
+
+/// Global secrets cache
+static SECRETS: Lazy<RwLock<Option<Secrets>>> = Lazy::new(|| RwLock::new(None));
+
+/// Initialize secrets from a file path (call once at startup)
+pub fn init_secrets(path: &Path) -> Result<()> {
+    let secrets = Secrets::from_file(path)?;
+    let mut cache = SECRETS.write().unwrap();
+    *cache = Some(secrets);
+    Ok(())
+}
+
+/// Get cached secrets
+fn get_secrets() -> Option<Secrets> {
+    SECRETS.read().unwrap().clone()
+}
 
 /// Call the configured agent CLI with the given role and prompt
 pub fn call_agent(role_config: &RoleConfig, role: &str, prompt: &str) -> Result<String> {
     match role_config.cli {
-        AgentCli::ClaudeCode => call_claude_code(role, prompt, &role_config.model),
+        AgentCli::ClaudeCode => call_claude_code(role, prompt, &role_config.model, &role_config.provider),
         AgentCli::Codex => call_codex(role, prompt, &role_config.model),
         AgentCli::OpenCode => call_opencode(role, prompt, &role_config.model),
     }
 }
 
-/// Call Claude Code CLI
-fn call_claude_code(role: &str, prompt: &str, model: &str) -> Result<String> {
+/// Call Claude Code CLI with provider-specific environment variables
+fn call_claude_code(role: &str, prompt: &str, model: &str, provider: &Provider) -> Result<String> {
     let full_prompt = format!(
         "You are acting as a {}. Respond only with your output, no explanations.\n\n{}",
         role, prompt
     );
 
+    // Build command with provider-specific environment
     #[cfg(windows)]
-    let mut child = Command::new("cmd")
-        .args([
-            "/C",
-            "claude",
-            "-p",
-            "-",
-            "--model",
-            model,
-            "--dangerously-skip-permissions",
-        ])
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .context("Failed to spawn claude CLI")?;
+    let mut cmd = Command::new("cmd");
+    #[cfg(windows)]
+    cmd.args([
+        "/C",
+        "claude",
+        "-p",
+        "-",
+        "--model",
+        model,
+        "--dangerously-skip-permissions",
+    ]);
 
     #[cfg(not(windows))]
-    let mut child = Command::new("claude")
-        .args([
-            "-p",
-            "-",
-            "--model",
-            model,
-            "--dangerously-skip-permissions",
-        ])
+    let mut cmd = Command::new("claude");
+    #[cfg(not(windows))]
+    cmd.args([
+        "-p",
+        "-",
+        "--model",
+        model,
+        "--dangerously-skip-permissions",
+    ]);
+
+    // Set provider-specific environment variables
+    match provider {
+        Provider::Minimax => {
+            let secrets = get_secrets()
+                .ok_or_else(|| anyhow::anyhow!("Secrets not initialized. Please create secrets.json"))?;
+            let creds = secrets.get_minimax()
+                .ok_or_else(|| anyhow::anyhow!("MiniMax credentials not found in secrets.json"))?;
+
+            cmd.env("ANTHROPIC_BASE_URL", creds.base_url.unwrap_or_else(|| "https://api.minimax.io/anthropic".to_string()));
+            cmd.env("ANTHROPIC_AUTH_TOKEN", &creds.api_key);
+            cmd.env("DISABLE_PROMPT_CACHING", "1");
+        }
+        Provider::Anthropic => {
+            // Use default Anthropic settings (no env override needed)
+            // Optionally use API key from secrets if provided
+            if let Some(secrets) = get_secrets() {
+                if let Some(creds) = secrets.get("anthropic") {
+                    if !creds.api_key.is_empty() {
+                        cmd.env("ANTHROPIC_API_KEY", &creds.api_key);
+                    }
+                }
+            }
+        }
+    }
+
+    let mut child = cmd
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())

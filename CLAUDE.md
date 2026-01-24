@@ -96,6 +96,42 @@ Where `{x}` is the task number, `{y}` is the attempt number, and `{n}` is the ch
 - **Sequential context loading**: For task N (N > 1), the pipeline reads `result-(N-1)-{highest}.md` and `how-(N-1)-{highest}.md` where `{highest}` is the highest attempt number found for that task. This ensures each task only sees context from the immediately preceding task, not all tasks at once.
 - On retry, failed result content is passed to Planner and Advisor for context
 
+### Multi-Provider Support
+
+Ouroboros supports multiple API providers for Claude Code, allowing you to mix different providers per role.
+
+#### Supported Providers
+
+| Provider | Description |
+|----------|-------------|
+| `anthropic` | Default Anthropic API (uses existing Claude Code auth) |
+| `minimax` | MiniMax M2.1 via Anthropic-compatible API |
+
+#### Configuration
+
+1. **config.json**: Add `provider` field to each role:
+```json
+{
+  "actor": { "cli": "claude-code", "model": "opus", "provider": "anthropic" },
+  "checker": { "cli": "claude-code", "model": "MiniMax-M2.1", "provider": "minimax" }
+}
+```
+
+2. **secrets.json**: Store API keys (gitignored):
+```json
+{
+  "minimax": {
+    "api_key": "your-minimax-api-key",
+    "base_url": "https://api.minimax.io/anthropic"
+  },
+  "anthropic": {
+    "api_key": ""
+  }
+}
+```
+
+See `example/secrets.json.example` for template.
+
 ### Error Handling
 
-Uses `anyhow::Result` with `.context()` for descriptive error messages. The `claude.rs` module wraps subprocess calls and propagates CLI errors.
+Uses `anyhow::Result` with `.context()` for descriptive error messages. The `agent.rs` module wraps subprocess calls and propagates CLI errors.

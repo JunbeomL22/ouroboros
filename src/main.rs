@@ -2,30 +2,43 @@ mod agent;
 mod config;
 mod pipeline;
 mod roles;
+mod secrets;
 
 use config::{AgentConfig, Config};
 use std::fs;
 
 #[async_std::main]
 async fn main() {
-    let config = match Config::load() {
-        Ok(cfg) => cfg,
+    let (config, secrets_path) = match Config::load() {
+        Ok(result) => result,
         Err(e) => {
             eprintln!("Failed to load config: {}", e);
             std::process::exit(1);
         }
     };
 
-    println!("Ouroboros - Recursive Agent Pipeline");
+    // Initialize secrets
+    if secrets_path.exists() {
+        if let Err(e) = agent::init_secrets(&secrets_path) {
+            eprintln!("Warning: Failed to load secrets: {}", e);
+            eprintln!("Provider-specific features (e.g., MiniMax) may not work.");
+        } else {
+            println!("Secrets loaded from {:?}", secrets_path);
+        }
+    } else {
+        println!("Note: {:?} not found. Using default provider settings.", secrets_path);
+    }
+
+    println!("\nOuroboros - Recursive Agent Pipeline");
     println!("Roles:");
-    println!("  outliner:     {} / {}", config.outliner.cli, config.outliner.model);
-    println!("  advisor:      {} / {}", config.advisor.cli, config.advisor.model);
-    println!("  planner:      {} / {}", config.planner.cli, config.planner.model);
-    println!("  actor:        {} / {}", config.actor.cli, config.actor.model);
-    println!("  checker:      {} / {}", config.checker.cli, config.checker.model);
-    println!("  minor_fixer:  {} / {}", config.minor_fixer.cli, config.minor_fixer.model);
-    println!("  major_fixer:  {} / {}", config.major_fixer.cli, config.major_fixer.model);
-    println!("  splitter:     {} / {}", config.splitter.cli, config.splitter.model);
+    println!("  outliner:     {} / {} ({:?})", config.outliner.cli, config.outliner.model, config.outliner.provider);
+    println!("  advisor:      {} / {} ({:?})", config.advisor.cli, config.advisor.model, config.advisor.provider);
+    println!("  planner:      {} / {} ({:?})", config.planner.cli, config.planner.model, config.planner.provider);
+    println!("  actor:        {} / {} ({:?})", config.actor.cli, config.actor.model, config.actor.provider);
+    println!("  checker:      {} / {} ({:?})", config.checker.cli, config.checker.model, config.checker.provider);
+    println!("  minor_fixer:  {} / {} ({:?})", config.minor_fixer.cli, config.minor_fixer.model, config.minor_fixer.provider);
+    println!("  major_fixer:  {} / {} ({:?})", config.major_fixer.cli, config.major_fixer.model, config.major_fixer.provider);
+    println!("  splitter:     {} / {} ({:?})", config.splitter.cli, config.splitter.model, config.splitter.provider);
     println!("Directories:");
     println!("  tasks:    {:?}", config.tasks_dir);
     println!("  results:  {:?}", config.results_dir);

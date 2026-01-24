@@ -8,10 +8,20 @@ use std::path::PathBuf;
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
 pub enum AgentCli {
+    #[serde(rename = "claude", alias = "claude-code")]
     ClaudeCode,
     Codex,
     #[serde(alias = "opencode")]
     OpenCode,
+}
+
+/// Supported API providers for Claude Code
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "kebab-case")]
+pub enum Provider {
+    #[default]
+    Anthropic,
+    Minimax,
 }
 
 impl Default for AgentCli {
@@ -23,7 +33,7 @@ impl Default for AgentCli {
 impl std::fmt::Display for AgentCli {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            AgentCli::ClaudeCode => write!(f, "claude-code"),
+            AgentCli::ClaudeCode => write!(f, "claude"),
             AgentCli::Codex => write!(f, "codex"),
             AgentCli::OpenCode => write!(f, "opencode"),
         }
@@ -39,18 +49,20 @@ impl std::str::FromStr for AgentCli {
             "codex" => Ok(AgentCli::Codex),
             "opencode" | "open-code" => Ok(AgentCli::OpenCode),
             _ => Err(format!(
-                "Unknown agent CLI: {}. Supported: claude-code, codex, opencode",
+                "Unknown agent CLI: {}. Supported: claude, codex, opencode",
                 s
             )),
         }
     }
 }
 
-/// Configuration for a single role (CLI + model)
+/// Configuration for a single role (CLI + model + provider)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RoleConfig {
     pub cli: AgentCli,
     pub model: String,
+    #[serde(default)]
+    pub provider: Provider,
 }
 
 impl RoleConfig {
@@ -58,6 +70,7 @@ impl RoleConfig {
         Self {
             cli,
             model: model.to_string(),
+            provider: Provider::default(),
         }
     }
 }
@@ -164,18 +177,43 @@ pub struct Config {
     /// Path to configuration file (JSON format)
     #[arg(long, short = 'c', default_value = "./config.json")]
     pub config: PathBuf,
+
+    /// Path to secrets file (JSON format with API keys)
+    #[arg(long, short = 's')]
+    pub secrets: Option<PathBuf>,
 }
 
 impl Config {
-    pub fn load() -> Result<AgentConfig> {
+    /// Load configuration and determine secrets path
+    /// Returns (AgentConfig, secrets_path)
+    /// Secrets path priority: CLI option > config.json directory > current directory
+    pub fn load() -> Result<(AgentConfig, PathBuf)> {
         let cli = Config::parse();
 
-        if cli.config.exists() {
-            AgentConfig::from_file(&cli.config)
+        let agent_config = if cli.config.exists() {
+            AgentConfig::from_file(&cli.config)?
         } else {
             eprintln!("Config file {:?} not found, using defaults.", cli.config);
-            Ok(AgentConfig::default())
-        }
-    }
+            AgentConfig::default()
+        };
 
+        // Determine secrets path
+        let secrets_path = if let Some(path) = cli.secrets {
+            // CLI option takes priority
+            path
+        } else if let Some(config_dir) = cli.config.parent() {
+            // Try config.json directory
+            let dir_secrets = config_dir.join("secrets.json");
+            if dir_secrets.exists() {
+                dir_secrets
+            } else {
+                // Fall back to current directory
+                PathBuf::from("./secrets.json")
+            }
+        } else {
+            PathBuf::from("./secrets.json")
+        };
+
+        Ok((agent_config, secrets_path))
+    }
 }
