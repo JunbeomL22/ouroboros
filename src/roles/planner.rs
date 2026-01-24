@@ -1,5 +1,5 @@
 use anyhow::Result;
-use crate::agent::call_agent;
+use crate::agent::{call_agent_with_subagents, SubagentDef};
 use crate::config::RoleConfig;
 
 /// Context from a previously completed task (only how and result)
@@ -10,6 +10,7 @@ pub struct PrevTaskContext<'a> {
 
 pub fn plan(
     role_config: &RoleConfig,
+    searcher_config: &RoleConfig,
     task: &str,
     failed_how: Option<&str>,
     failed_plan: Option<&str>,
@@ -17,6 +18,9 @@ pub fn plan(
     advisor_feedback: Option<&str>,
     prev_context: Option<PrevTaskContext>,
 ) -> Result<String> {
+    // Create searcher subagent definition
+    let searcher_subagent = SubagentDef::searcher_from_config(searcher_config);
+
     let context = match prev_context {
         Some(ctx) => {
             format!(
@@ -54,11 +58,18 @@ Take screenshot
 
 Only use browser markers for genuine browser automation needs."#;
 
+    let search_instructions = r#"
+
+=== WEB SEARCH ===
+If you need to search the web for information to create a better plan, delegate to the "searcher" agent.
+The searcher will perform web searches and return results to you.
+Only use the searcher when you genuinely need external information not available in the codebase."#;
+
     let important_note = format!(
         "=== IMPORTANT ===
 - DO NOT create task-*.md files in the current directory or any other location. The task files are read-only inputs managed by the system.
-- DO NOT execute any actions, modify files, run commands, or implement anything. Your ONLY job is to output a written plan. The Actor role will execute the plan later.{}",
-        browser_instructions
+- DO NOT execute any actions, modify files, run commands, or implement anything. Your ONLY job is to output a written plan. The Actor role will execute the plan later.{}{}",
+        browser_instructions, search_instructions
     );
 
     let prompt = match (failed_how, advisor_feedback) {
@@ -80,5 +91,10 @@ Only use browser markers for genuine browser automation needs."#;
         ),
     };
 
-    call_agent(role_config, "Planner", &prompt)
+    call_agent_with_subagents(
+        role_config,
+        "Planner",
+        &prompt,
+        Some(vec![searcher_subagent]),
+    )
 }

@@ -7,6 +7,7 @@
   "checker": { "cli": "claude", "model": "MiniMax-M2.1", "provider": "minimax" },
   "minor_fixer": { "cli": "claude", "model": "MiniMax-M2.1", "provider": "minimax" },
   "major_fixer": { "cli": "claude", "model": "opus", "provider": "anthropic" },
+  "searcher": { "cli": "claude", "model": "haiku", "provider": "anthropic" },
 
   "tasks_dir": "./tasks",
   "results_dir": "./results",

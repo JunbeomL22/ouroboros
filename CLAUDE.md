@@ -69,7 +69,8 @@ The Checker classifies issues into two categories:
 
 ### Key Modules
 
-- `agent.rs` - Spawns agent CLI subprocess (claude-code or codex)
+- `agent.rs` - Spawns agent CLI subprocess (claude-code, codex, opencode)
+- `secrets.rs` - API key and credential management
 - `pipeline.rs` - Main orchestration loop, retry logic, file I/O
 - `roles/` - Role implementations (outliner, planner, advisor, actor, checker, minor_fixer, major_fixer, splitter)
 - `config.rs` - CLI argument parsing with clap
@@ -95,6 +96,44 @@ Where `{x}` is the task number, `{y}` is the attempt number, and `{n}` is the ch
 
 - **Sequential context loading**: For task N (N > 1), the pipeline reads `result-(N-1)-{highest}.md` and `how-(N-1)-{highest}.md` where `{highest}` is the highest attempt number found for that task. This ensures each task only sees context from the immediately preceding task, not all tasks at once.
 - On retry, failed result content is passed to Planner and Advisor for context
+
+### Supported CLIs
+
+| CLI | Description |
+|-----|-------------|
+| `claude` / `claude-code` | Claude Code CLI (supports multiple providers) |
+| `codex` | OpenAI Codex CLI |
+| `opencode` | OpenCode CLI |
+
+### Searcher Subagent
+
+The **Planner** and **Actor** roles have access to a "searcher" subagent for web searches. This uses Claude Code's native subagent delegation.
+
+#### How It Works
+
+1. When **Planner** or **Actor** needs web information, they delegate to the "searcher" subagent
+2. The subagent runs with the `searcher` role's model (typically cheaper, e.g., `haiku` or `sonnet`)
+3. Search results are returned within the same session - no re-spawning needed
+4. The main role continues with the search context
+
+#### Token Efficiency
+
+Native subagent delegation is more efficient than re-spawning:
+- Main session stays active (no re-processing of initial prompt)
+- Subagent receives only the search query (minimal context)
+- Results flow back seamlessly
+
+#### Configuration
+
+The `searcher` role in `config.json` defines the subagent's model:
+```json
+{
+  "actor": { "cli": "claude", "model": "opus", "provider": "anthropic" },
+  "searcher": { "cli": "claude", "model": "haiku", "provider": "anthropic" }
+}
+```
+
+Actor (Opus) can delegate searches to the cheaper Haiku model.
 
 ### Multi-Provider Support
 

@@ -13,8 +13,6 @@ pub enum AgentCli {
     Codex,
     #[serde(alias = "opencode")]
     OpenCode,
-    #[serde(rename = "browser-use", alias = "browser_use")]
-    BrowserUse,
 }
 
 /// Supported API providers for Claude Code
@@ -38,7 +36,6 @@ impl std::fmt::Display for AgentCli {
             AgentCli::ClaudeCode => write!(f, "claude"),
             AgentCli::Codex => write!(f, "codex"),
             AgentCli::OpenCode => write!(f, "opencode"),
-            AgentCli::BrowserUse => write!(f, "browser-use"),
         }
     }
 }
@@ -51,9 +48,8 @@ impl std::str::FromStr for AgentCli {
             "claude-code" | "claude" => Ok(AgentCli::ClaudeCode),
             "codex" => Ok(AgentCli::Codex),
             "opencode" | "open-code" => Ok(AgentCli::OpenCode),
-            "browser-use" | "browser_use" => Ok(AgentCli::BrowserUse),
             _ => Err(format!(
-                "Unknown agent CLI: {}. Supported: claude, codex, opencode, browser-use",
+                "Unknown agent CLI: {}. Supported: claude, codex, opencode",
                 s
             )),
         }
@@ -92,6 +88,7 @@ pub struct AgentConfig {
     pub splitter: RoleConfig,
     pub minor_fixer: RoleConfig,
     pub major_fixer: RoleConfig,
+    pub searcher: RoleConfig,
 
     // Directory paths
     pub tasks_dir: PathBuf,
@@ -122,6 +119,7 @@ impl Default for AgentConfig {
             splitter: RoleConfig::new(AgentCli::ClaudeCode, "opus"),
             minor_fixer: RoleConfig::new(AgentCli::ClaudeCode, "haiku"),
             major_fixer: RoleConfig::new(AgentCli::ClaudeCode, "opus"),
+            searcher: RoleConfig::new(AgentCli::ClaudeCode, "sonnet"),
 
             tasks_dir: PathBuf::from("./tasks"),
             results_dir: PathBuf::from("./results"),

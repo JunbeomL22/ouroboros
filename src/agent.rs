@@ -23,47 +23,121 @@ fn get_secrets() -> Option<Secrets> {
     SECRETS.read().unwrap().clone()
 }
 
+/// Subagent definition for --agents flag
+#[derive(Debug, Clone)]
+pub struct SubagentDef {
+    pub name: String,
+    pub model: String,
+    pub description: String,
+    pub tools: Vec<String>,
+}
+
+impl SubagentDef {
+    /// Create a searcher subagent from a RoleConfig
+    pub fn searcher_from_config(config: &RoleConfig) -> Self {
+        Self {
+            name: "searcher".to_string(),
+            model: config.model.clone(),
+            description: "Web search specialist for gathering external information".to_string(),
+            tools: vec![
+                "WebSearch".to_string(),
+                "WebFetch".to_string(),
+                "Read".to_string(),
+            ],
+        }
+    }
+
+    /// Convert to JSON string for --agents flag
+    pub fn to_json(&self) -> String {
+        format!(
+            r#"{{"{}": {{"model": "{}", "description": "{}", "tools": [{}]}}}}"#,
+            self.name,
+            self.model,
+            self.description,
+            self.tools.iter().map(|t| format!("\"{}\"", t)).collect::<Vec<_>>().join(", ")
+        )
+    }
+}
+
 /// Call the configured agent CLI with the given role and prompt
 pub fn call_agent(role_config: &RoleConfig, role: &str, prompt: &str) -> Result<String> {
+    call_agent_with_subagents(role_config, role, prompt, None)
+}
+
+/// Call the configured agent CLI with optional subagents
+pub fn call_agent_with_subagents(
+    role_config: &RoleConfig,
+    role: &str,
+    prompt: &str,
+    subagents: Option<Vec<SubagentDef>>,
+) -> Result<String> {
     match role_config.cli {
-        AgentCli::ClaudeCode => call_claude_code(role, prompt, &role_config.model, &role_config.provider),
+        AgentCli::ClaudeCode => call_claude_code(role, prompt, &role_config.model, &role_config.provider, subagents),
         AgentCli::Codex => call_codex(role, prompt, &role_config.model),
         AgentCli::OpenCode => call_opencode(role, prompt, &role_config.model),
-        AgentCli::BrowserUse => call_browser_use(role, prompt, &role_config.model),
     }
 }
 
 /// Call Claude Code CLI with provider-specific environment variables
-fn call_claude_code(role: &str, prompt: &str, model: &str, provider: &Provider) -> Result<String> {
+fn call_claude_code(
+    role: &str,
+    prompt: &str,
+    model: &str,
+    provider: &Provider,
+    subagents: Option<Vec<SubagentDef>>,
+) -> Result<String> {
     let full_prompt = format!(
         "You are acting as a {}. Respond only with your output, no explanations.\n\n{}",
         role, prompt
     );
 
+    // Build base args
+    let mut args: Vec<String> = vec![
+        "-p".to_string(),
+        "-".to_string(),
+        "--model".to_string(),
+        model.to_string(),
+        "--dangerously-skip-permissions".to_string(),
+    ];
+
+    // Add subagents if provided
+    if let Some(agents) = &subagents {
+        if !agents.is_empty() {
+            // Combine all subagent definitions into one JSON object
+            let agents_json = if agents.len() == 1 {
+                agents[0].to_json()
+            } else {
+                // Merge multiple agents into one JSON object
+                let inner: Vec<String> = agents.iter().map(|a| {
+                    format!(
+                        r#""{}": {{"model": "{}", "description": "{}", "tools": [{}]}}"#,
+                        a.name,
+                        a.model,
+                        a.description,
+                        a.tools.iter().map(|t| format!("\"{}\"", t)).collect::<Vec<_>>().join(", ")
+                    )
+                }).collect();
+                format!("{{{}}}", inner.join(", "))
+            };
+            args.push("--agents".to_string());
+            args.push(agents_json);
+        }
+    }
+
     // Build command with provider-specific environment
     #[cfg(windows)]
     let mut cmd = Command::new("cmd");
     #[cfg(windows)]
-    cmd.args([
-        "/C",
-        "claude",
-        "-p",
-        "-",
-        "--model",
-        model,
-        "--dangerously-skip-permissions",
-    ]);
+    {
+        let mut cmd_args = vec!["/C".to_string(), "claude".to_string()];
+        cmd_args.extend(args);
+        cmd.args(&cmd_args);
+    }
 
     #[cfg(not(windows))]
     let mut cmd = Command::new("claude");
     #[cfg(not(windows))]
-    cmd.args([
-        "-p",
-        "-",
-        "--model",
-        model,
-        "--dangerously-skip-permissions",
-    ]);
+    cmd.args(&args);
 
     // Set provider-specific environment variables
     match provider {
@@ -231,58 +305,3 @@ fn call_opencode(role: &str, prompt: &str, model: &str) -> Result<String> {
     Ok(response.trim().to_string())
 }
 
-/// Call browser_use Python wrapper for web automation
-pub fn call_browser_use(role: &str, prompt: &str, _model: &str) -> Result<String> {
-    let full_prompt = format!(
-        "You are acting as a {}. Respond only with your output, no explanations.\n\n{}",
-        role, prompt
-    );
-
-    // Get the path to the wrapper script (relative to current working directory)
-    let script_path = "scripts/browser_use_wrapper.py";
-
-    #[cfg(windows)]
-    let mut child = Command::new("python")
-        .args([script_path])
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .context("Failed to spawn browser_use wrapper (python)")?;
-
-    #[cfg(not(windows))]
-    let mut child = Command::new("python3")
-        .args([script_path])
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .context("Failed to spawn browser_use wrapper (python3)")?;
-
-    if let Some(mut stdin) = child.stdin.take() {
-        stdin
-            .write_all(full_prompt.as_bytes())
-            .context("Failed to write prompt to browser_use stdin")?;
-    }
-
-    let output = child
-        .wait_with_output()
-        .context("Failed to wait for browser_use wrapper")?;
-
-    if !output.status.success() {
-        let stdout = String::from_utf8_lossy(&output.stdout);
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        let exit_code = output.status.code().map(|c| c.to_string()).unwrap_or_else(|| "unknown".to_string());
-        anyhow::bail!(
-            "browser_use wrapper failed (exit code {}):\nstdout: {}\nstderr: {}",
-            exit_code,
-            stdout,
-            stderr
-        );
-    }
-
-    let response =
-        String::from_utf8(output.stdout).context("Failed to parse browser_use output as UTF-8")?;
-
-    Ok(response.trim().to_string())
-}

@@ -202,6 +202,21 @@ Each role can use a different CLI and provider combination:
 | `claude-code` | Claude Code CLI (supports multiple providers) |
 | `codex` | OpenAI Codex CLI |
 | `opencode` | OpenCode CLI |
+| `browser-use` | Browser automation via Python browser_use library |
+
+### Browser Use Setup
+
+To use the `browser-use` CLI for web automation tasks:
+
+```bash
+# Install Python dependencies
+pip install browser-use langchain-anthropic
+
+# Set your Anthropic API key
+export ANTHROPIC_API_KEY=your-key-here
+```
+
+The browser_use wrapper script is located at `scripts/browser_use_wrapper.py`.
 
 ### Supported Providers (for claude-code)
 
@@ -263,10 +278,15 @@ ouroboros/
 │   └── check-1-1-1.md
 ├── fixes/           # Fixer output
 │   └── fix-1-1.md
+├── rechecks/        # Recheck validations after fixes
+│   └── recheck-1-1-1.md
+├── scripts/         # Utility scripts
+│   └── browser_use_wrapper.py
 └── src/
     ├── main.rs
     ├── config.rs
     ├── agent.rs
+    ├── secrets.rs
     ├── pipeline.rs
     └── roles/
         ├── outliner.rs
@@ -274,7 +294,8 @@ ouroboros/
         ├── planner.rs
         ├── actor.rs
         ├── checker.rs
-        ├── fixer.rs
+        ├── minor_fixer.rs
+        ├── major_fixer.rs
         └── splitter.rs
 ```
 
@@ -289,7 +310,9 @@ ouroboros/
 | `results/` | `result-{x}-{y}.md` | Task and attempt number |
 | `hows/` | `how-{x}-{y}.md` | Task and attempt number |
 | `checks/` | `check-{x}-{y}-{n}.md` | Task, attempt, and check number |
-| `fixes/` | `fix-{x}-{y}.md` | Task and attempt number |
+| `fixes/` | `fix-{x}-{y}-minor.md` | Task and attempt (minor issues only) |
+| `fixes/` | `fix-{x}-{y}-major.md` | Task and attempt (major issues) |
+| `rechecks/` | `recheck-{x}-{y}-{n}.md` | Task, attempt, and recheck number |
 
 ## Creating Tasks
 
