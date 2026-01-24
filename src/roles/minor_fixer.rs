@@ -12,14 +12,22 @@ pub struct MinorFixerOutput {
 pub fn fix_minor(
     role_config: &RoleConfig,
     task: &str,
+    plan: &str,
     original_how: &str,
+    result: &str,
     minor_issues: &str,
 ) -> Result<MinorFixerOutput> {
     let prompt = format!(
         r#"Original Task:
 {}
 
+Plan that was executed:
+{}
+
 What was done previously:
+{}
+
+Execution result summary:
 {}
 
 Minor issues identified by checker that need fixing:
@@ -64,7 +72,7 @@ Brief summary of the fixes applied:
 - Any issues that could not be fixed (and why)
 
 Make sure to include both sections with the exact delimiters shown above."#,
-        task, original_how, minor_issues
+        task, plan, original_how, result, minor_issues
     );
 
     let output = call_agent(role_config, "MinorFixer", &prompt)?;

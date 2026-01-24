@@ -22,12 +22,24 @@ pub struct CheckResult {
     pub minor_issues: Option<String>,
 }
 
-pub fn check(role_config: &RoleConfig, task: &str, how: &str) -> Result<CheckResult> {
+pub fn check(
+    role_config: &RoleConfig,
+    task: &str,
+    plan: &str,
+    how: &str,
+    result: &str,
+) -> Result<CheckResult> {
     let prompt = format!(
         r#"Task that was supposed to be completed:
 {}
 
-Approach taken:
+Plan that was executed:
+{}
+
+Approach taken (how it was done):
+{}
+
+Execution result summary:
 {}
 
 Evaluate whether the CURRENT STATE fully meets ALL task requirements.
@@ -51,7 +63,7 @@ Provide a brief analysis, then at the end:
 2. If FAIL with only MINOR issues: Write "VERDICT: FAIL_MINOR" followed by a new line with "MINOR_ISSUES:"
    and list each minor issue on its own line starting with "- "
 3. If FAIL with any MAJOR issues: Write "VERDICT: FAIL_MAJOR""#,
-        task, how
+        task, plan, how, result
     );
 
     let response = call_agent(role_config, "Checker", &prompt)?;

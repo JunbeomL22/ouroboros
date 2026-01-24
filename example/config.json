@@ -3,9 +3,9 @@
   "outliner": { "cli": "claude", "model": "MiniMax-M2.1", "provider": "minimax" },
   "advisor": { "cli": "claude", "model": "MiniMax-M2.1", "provider": "minimax" },
   "planner": { "cli": "claude", "model": "opus", "provider": "anthropic" },
-  "actor": { "cli": "claude", "model": "MiniMax-M2.1", "provider": "minimax" },
+  "actor": { "cli": "claude", "model": "opus", "provider": "anthropic" },
   "checker": { "cli": "claude", "model": "MiniMax-M2.1", "provider": "minimax" },
-  "minor_fixer": { "cli": "codex", "model": "gpt-5.2-codex" },
+  "minor_fixer": { "cli": "claude", "model": "MiniMax-M2.1", "provider": "minimax" },
   "major_fixer": { "cli": "claude", "model": "opus", "provider": "anthropic" },
 
   "tasks_dir": "./tasks",

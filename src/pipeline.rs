@@ -173,6 +173,9 @@ fn parse_task_number(filename: &str) -> Option<usize> {
 struct AttemptContext {
     result: String,
     how: String,
+    plan: String,
+    outline: String,
+    advise: String,
     check_feedbacks: String,
     fix_context: Option<String>,
     recheck_feedbacks: Option<String>,
@@ -234,8 +237,8 @@ async fn process_task(
         let how_path = config.hows_dir.join(format!("how-{}-{}.md", task_num, attempt));
 
         // Build context from all previous attempts
-        let (failed_results, failed_feedbacks) = if previous_attempts.is_empty() {
-            (None, None)
+        let (failed_results, failed_plans, failed_feedbacks) = if previous_attempts.is_empty() {
+            (None, None, None)
         } else {
             let results: String = previous_attempts
                 .iter()
@@ -243,6 +246,16 @@ async fn process_task(
                 .map(|(i, ctx)| format!(
                     "=== Attempt {} ===\n\n## Result\n{}\n\n## How\n{}",
                     i + 1, ctx.result, ctx.how
+                ))
+                .collect::<Vec<_>>()
+                .join("\n\n");
+
+            let plans: String = previous_attempts
+                .iter()
+                .enumerate()
+                .map(|(i, ctx)| format!(
+                    "=== Attempt {} ===\n\n## Outline\n{}\n\n## Advise\n{}\n\n## Plan\n{}",
+                    i + 1, ctx.outline, ctx.advise, ctx.plan
                 ))
                 .collect::<Vec<_>>()
                 .join("\n\n");
@@ -266,7 +279,7 @@ async fn process_task(
                 .collect::<Vec<_>>()
                 .join("\n\n");
 
-            (Some(results), Some(feedbacks))
+            (Some(results), Some(plans), Some(feedbacks))
         };
 
         // Step 1: Outliner creates high-level outline
@@ -279,6 +292,7 @@ async fn process_task(
             &config.outliner,
             &task_content,
             failed_results.as_deref(),
+            failed_plans.as_deref(),
             failed_feedbacks.as_deref(),
             prev_task_context,
         ) {
@@ -291,6 +305,9 @@ async fn process_task(
                 previous_attempts.push(AttemptContext {
                     result: format!("Outliner failed: {}", e),
                     how: String::new(),
+                    plan: String::new(),
+                    outline: String::new(),
+                    advise: String::new(),
                     check_feedbacks: String::new(),
                     fix_context: None,
                     recheck_feedbacks: None,
@@ -307,7 +324,19 @@ async fn process_task(
 
         // Step 2: Advisor reviews outline
         println!("[Advisor] Reviewing outline...");
-        let advice = match advise(&config.advisor, &task_content, &task_outline, failed_results.as_deref(), failed_feedbacks.as_deref()) {
+        let prev_task_context_for_advisor = prev_context.map(|c| PrevTaskContext {
+            how: &c.how,
+            result: &c.result,
+        });
+        let advice = match advise(
+            &config.advisor,
+            &task_content,
+            &task_outline,
+            failed_results.as_deref(),
+            failed_plans.as_deref(),
+            failed_feedbacks.as_deref(),
+            prev_task_context_for_advisor,
+        ) {
             Ok(advice) => {
                 println!("[Advisor] Feedback provided.");
                 advice
@@ -317,6 +346,9 @@ async fn process_task(
                 previous_attempts.push(AttemptContext {
                     result: format!("Advisor failed: {}", e),
                     how: String::new(),
+                    plan: String::new(),
+                    outline: task_outline.clone(),
+                    advise: String::new(),
                     check_feedbacks: String::new(),
                     fix_context: None,
                     recheck_feedbacks: None,
@@ -341,6 +373,7 @@ async fn process_task(
             &config.planner,
             &task_content,
             failed_results.as_deref(),
+            failed_plans.as_deref(),
             failed_feedbacks.as_deref(),
             Some(&format!("Outline:\n{}\n\nAdvisor Feedback:\n{}", task_outline, advice)),
             prev_task_context_for_plan,
@@ -354,6 +387,9 @@ async fn process_task(
                 previous_attempts.push(AttemptContext {
                     result: format!("Planner failed: {}", e),
                     how: String::new(),
+                    plan: String::new(),
+                    outline: task_outline.clone(),
+                    advise: advice.clone(),
                     check_feedbacks: String::new(),
                     fix_context: None,
                     recheck_feedbacks: None,
@@ -381,6 +417,9 @@ async fn process_task(
                 previous_attempts.push(AttemptContext {
                     result: format!("Actor failed: {}", e),
                     how: String::new(),
+                    plan: revised_plan.clone(),
+                    outline: task_outline.clone(),
+                    advise: advice.clone(),
                     check_feedbacks: String::new(),
                     fix_context: None,
                     recheck_feedbacks: None,
@@ -408,9 +447,11 @@ async fn process_task(
         let futures: Vec<_> = (1..=config.checks)
             .map(|i| {
                 let task_clone = task_content.clone();
+                let plan_clone = revised_plan.clone();
                 let how_clone = actor_output.how.clone();
+                let result_clone = actor_output.result.clone();
                 let checker_clone = checker_config.clone();
-                task::spawn_blocking(move || (i, check(&checker_clone, &task_clone, &how_clone)))
+                task::spawn_blocking(move || (i, check(&checker_clone, &task_clone, &plan_clone, &how_clone, &result_clone)))
             })
             .collect();
 
@@ -503,6 +544,7 @@ async fn process_task(
                 &task_content,
                 &revised_plan,
                 &actor_output.how,
+                &actor_output.result,
                 &major_issues,
                 minor_issues.as_deref(),
             ) {
@@ -549,7 +591,9 @@ async fn process_task(
             match fix_minor(
                 &config.minor_fixer,
                 &task_content,
+                &revised_plan,
                 &actor_output.how,
+                &actor_output.result,
                 &minor_issues,
             ) {
                 Ok(fixer_output) => {
@@ -596,9 +640,11 @@ async fn process_task(
             let recheck_futures: Vec<_> = (1..=config.checks)
                 .map(|i| {
                     let task_clone = task_content.clone();
+                    let plan_clone = revised_plan.clone();
                     let how_clone = combined_how.clone();
+                    let result_clone = actor_output.result.clone();
                     let checker_clone = recheck_config.clone();
-                    task::spawn_blocking(move || (i, check(&checker_clone, &task_clone, &how_clone)))
+                    task::spawn_blocking(move || (i, check(&checker_clone, &task_clone, &plan_clone, &how_clone, &result_clone)))
                 })
                 .collect();
 
@@ -687,6 +733,9 @@ async fn process_task(
         previous_attempts.push(AttemptContext {
             result: actor_output.result,
             how: actor_output.how,
+            plan: revised_plan,
+            outline: task_outline,
+            advise: advice,
             check_feedbacks: combined_check_feedbacks,
             fix_context,
             recheck_feedbacks: recheck_section,

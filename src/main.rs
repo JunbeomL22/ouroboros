@@ -31,6 +31,8 @@ async fn main() {
 
     println!("\nOuroboros - Recursive Agent Pipeline");
     println!("Roles:");
+    println!("  splitter:     {} / {} ({:?})", config.splitter.cli, config.splitter.model, config.splitter.provider);
+    println!();
     println!("  outliner:     {} / {} ({:?})", config.outliner.cli, config.outliner.model, config.outliner.provider);
     println!("  advisor:      {} / {} ({:?})", config.advisor.cli, config.advisor.model, config.advisor.provider);
     println!("  planner:      {} / {} ({:?})", config.planner.cli, config.planner.model, config.planner.provider);
@@ -38,7 +40,6 @@ async fn main() {
     println!("  checker:      {} / {} ({:?})", config.checker.cli, config.checker.model, config.checker.provider);
     println!("  minor_fixer:  {} / {} ({:?})", config.minor_fixer.cli, config.minor_fixer.model, config.minor_fixer.provider);
     println!("  major_fixer:  {} / {} ({:?})", config.major_fixer.cli, config.major_fixer.model, config.major_fixer.provider);
-    println!("  splitter:     {} / {} ({:?})", config.splitter.cli, config.splitter.model, config.splitter.provider);
     println!("Directories:");
     println!("  tasks:    {:?}", config.tasks_dir);
     println!("  results:  {:?}", config.results_dir);

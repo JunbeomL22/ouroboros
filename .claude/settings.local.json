@@ -17,7 +17,9 @@
       "WebFetch(domain:models.dev)",
       "mcp__MiniMax__web_search",
       "WebFetch(domain:imfing.com)",
-      "WebFetch(domain:aiengineerguide.com)"
+      "WebFetch(domain:aiengineerguide.com)",
+      "Bash(ls -la \"C:\\\\Users\\\\junbe\\\\Projects\\\\ouroboros\\\\example\\\\tasks\"\" 2>/dev/null || dir \"C:UsersjunbeProjectsouroborosexampletasks \")",
+      "Bash(dir \"C:\\\\Users\\\\junbe\\\\Projects\\\\ouroboros\\\\example\\\\tasks\")"
     ]
   }
 }

@@ -15,6 +15,7 @@ pub fn fix_major(
     task: &str,
     plan: &str,
     original_how: &str,
+    result: &str,
     major_issues: &str,
     minor_issues: Option<&str>,
 ) -> Result<MajorFixerOutput> {
@@ -34,6 +35,9 @@ Plan that was executed:
 {}
 
 What was done previously:
+{}
+
+Execution result summary:
 {}
 
 Major issues identified by checker that need fixing:
@@ -74,7 +78,7 @@ Brief summary of the fixes applied:
 - Any issues that could not be fully fixed (and why)
 
 Make sure to include both sections with the exact delimiters shown above."#,
-        task, plan, original_how, major_issues, minor_section
+        task, plan, original_how, result, major_issues, minor_section
     );
 
     let output = call_agent(role_config, "MajorFixer", &prompt)?;

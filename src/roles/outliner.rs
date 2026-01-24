@@ -8,6 +8,7 @@ pub fn outline(
     role_config: &RoleConfig,
     task: &str,
     failed_how: Option<&str>,
+    failed_plan: Option<&str>,
     check_feedbacks: Option<&str>,
     prev_context: Option<PrevTaskContext>,
 ) -> Result<String> {
@@ -26,13 +27,18 @@ pub fn outline(
         None => String::new(),
     };
 
+    let plan_context = match failed_plan {
+        Some(plan) => format!("\n\nPlan from failed attempt:\n{}\n", plan),
+        None => String::new(),
+    };
+
     let prompt = match failed_how {
         Some(how) => format!(
             r#"Task:
 {}{}
 
 Previous failed approach:
-{}{}
+{}{}{}
 
 Create a high-level outline for this task. Focus on:
 1. Key objectives and deliverables
@@ -41,7 +47,7 @@ Create a high-level outline for this task. Focus on:
 4. Success criteria
 
 Keep the outline concise and strategic. The detailed planning will be done by the Planner based on your outline."#,
-            task, context, how, check_context
+            task, context, how, plan_context, check_context
         ),
         None => format!(
             r#"Task:
