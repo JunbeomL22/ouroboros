@@ -40,6 +40,9 @@ async fn main() {
     println!("  checker:      {} / {} ({:?})", config.checker.cli, config.checker.model, config.checker.provider);
     println!("  minor_fixer:  {} / {} ({:?})", config.minor_fixer.cli, config.minor_fixer.model, config.minor_fixer.provider);
     println!("  major_fixer:  {} / {} ({:?})", config.major_fixer.cli, config.major_fixer.model, config.major_fixer.provider);
+    println!("");
+    println!("  searcher:     {} / {} ({:?})", config.searcher.cli, config.searcher.model, config.searcher.provider);
+    println!();
     println!("Directories:");
     println!("  tasks:    {:?}", config.tasks_dir);
     println!("  results:  {:?}", config.results_dir);
