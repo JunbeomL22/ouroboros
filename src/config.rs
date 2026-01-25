@@ -88,7 +88,8 @@ pub struct AgentConfig {
     pub splitter: RoleConfig,
     pub minor_fixer: RoleConfig,
     pub major_fixer: RoleConfig,
-    pub searcher: RoleConfig,
+    #[serde(rename = "web-searcher", alias = "searcher")]
+    pub web_searcher: RoleConfig,
 
     // Directory paths
     pub tasks_dir: PathBuf,
@@ -119,7 +120,7 @@ impl Default for AgentConfig {
             splitter: RoleConfig::new(AgentCli::ClaudeCode, "opus"),
             minor_fixer: RoleConfig::new(AgentCli::ClaudeCode, "haiku"),
             major_fixer: RoleConfig::new(AgentCli::ClaudeCode, "opus"),
-            searcher: RoleConfig::new(AgentCli::ClaudeCode, "sonnet"),
+            web_searcher: RoleConfig::new(AgentCli::ClaudeCode, "sonnet"),
 
             tasks_dir: PathBuf::from("./tasks"),
             results_dir: PathBuf::from("./results"),

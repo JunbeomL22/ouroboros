@@ -41,8 +41,7 @@ async fn main() {
     println!("  minor_fixer:  {} / {} ({:?})", config.minor_fixer.cli, config.minor_fixer.model, config.minor_fixer.provider);
     println!("  major_fixer:  {} / {} ({:?})", config.major_fixer.cli, config.major_fixer.model, config.major_fixer.provider);
     println!("");
-    println!("  searcher:     {} / {} ({:?})", config.searcher.cli, config.searcher.model, config.searcher.provider);
-    println!();
+    println!("  web-searcher:     {} / {} ({:?})", config.web_searcher.cli, config.web_searcher.model, config.web_searcher.provider);
     println!("Directories:");
     println!("  tasks:    {:?}", config.tasks_dir);
     println!("  results:  {:?}", config.results_dir);
@@ -54,7 +53,7 @@ async fn main() {
     println!("  fixes:    {:?}", config.fixes_dir);
     println!("Settings: checks={}, threshold={}, recheck_threshold={}, max_tries={}",
              config.checks, config.threshold, config.recheck_threshold, config.max_tries);
-
+    println!();
     if let Err(e) = create_directories(&config) {
         eprintln!("Failed to create directories: {}", e);
         std::process::exit(1);

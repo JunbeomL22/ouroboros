@@ -371,7 +371,7 @@ async fn process_task(
         });
         let revised_plan = match plan(
             &config.planner,
-            &config.searcher,
+            &config.web_searcher,
             &task_content,
             failed_results.as_deref(),
             failed_plans.as_deref(),
@@ -408,7 +408,7 @@ async fn process_task(
 
         // Step 4: Actor executes revised plan
         println!("[Actor] Executing plan...");
-        let actor_output = match act(&config.actor, &config.searcher, &task_content, &revised_plan) {
+        let actor_output = match act(&config.actor, &config.web_searcher, &task_content, &revised_plan) {
             Ok(output) => {
                 println!("[Actor] Execution complete.");
                 output

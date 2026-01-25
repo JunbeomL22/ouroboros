@@ -9,12 +9,12 @@ pub struct ActorOutput {
 
 pub fn act(
     role_config: &RoleConfig,
-    searcher_config: &RoleConfig,
+    web_searcher_config: &RoleConfig,
     task: &str,
     plan: &str,
 ) -> Result<ActorOutput> {
-    // Create searcher subagent definition
-    let searcher_subagent = SubagentDef::searcher_from_config(searcher_config);
+    // Create web-searcher subagent definition
+    let web_searcher_subagent = SubagentDef::web_searcher_from_config(web_searcher_config);
 
     let prompt = format!(
         r#"Task:
@@ -37,9 +37,9 @@ You MUST NOT manually create result-*.md, plan-*.md, task-*.md, or similar files
 Just provide your output in the sections below - the system handles file creation.
 
 === WEB SEARCH ===
-If you need to search the web for external information, delegate to the "searcher" agent.
-The searcher will perform web searches and return results to you.
-Only use the searcher when you genuinely need external information not available in the codebase.
+If you need to search the web for external information, delegate to the "web-searcher" agent.
+The web-searcher will perform web searches and return results to you.
+Only use the web-searcher when you genuinely need external information not available in the codebase.
 
 ===HOW===
 Explain HOW you executed the plan. Document your process and methodology:
@@ -63,7 +63,7 @@ Make sure to include both sections with the exact delimiters shown above."#,
         role_config,
         "Actor",
         &prompt,
-        Some(vec![searcher_subagent]),
+        Some(vec![web_searcher_subagent]),
     )?;
 
     parse_actor_output(&output)

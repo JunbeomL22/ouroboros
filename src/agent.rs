@@ -33,10 +33,10 @@ pub struct SubagentDef {
 }
 
 impl SubagentDef {
-    /// Create a searcher subagent from a RoleConfig
-    pub fn searcher_from_config(config: &RoleConfig) -> Self {
+    /// Create a web-searcher subagent from a RoleConfig
+    pub fn web_searcher_from_config(config: &RoleConfig) -> Self {
         Self {
-            name: "searcher".to_string(),
+            name: "web-searcher".to_string(),
             model: config.model.clone(),
             description: "Web search specialist for gathering external information".to_string(),
             tools: vec![

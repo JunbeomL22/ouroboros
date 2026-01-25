@@ -10,7 +10,7 @@ pub struct PrevTaskContext<'a> {
 
 pub fn plan(
     role_config: &RoleConfig,
-    searcher_config: &RoleConfig,
+    web_searcher_config: &RoleConfig,
     task: &str,
     failed_how: Option<&str>,
     failed_plan: Option<&str>,
@@ -18,8 +18,8 @@ pub fn plan(
     advisor_feedback: Option<&str>,
     prev_context: Option<PrevTaskContext>,
 ) -> Result<String> {
-    // Create searcher subagent definition
-    let searcher_subagent = SubagentDef::searcher_from_config(searcher_config);
+    // Create web-searcher subagent definition
+    let web_searcher_subagent = SubagentDef::web_searcher_from_config(web_searcher_config);
 
     let context = match prev_context {
         Some(ctx) => {
@@ -61,9 +61,9 @@ Only use browser markers for genuine browser automation needs."#;
     let search_instructions = r#"
 
 === WEB SEARCH ===
-If you need to search the web for information to create a better plan, delegate to the "searcher" agent.
-The searcher will perform web searches and return results to you.
-Only use the searcher when you genuinely need external information not available in the codebase."#;
+If you need to search the web for information to create a better plan, delegate to the "web-searcher" agent.
+The web-searcher will perform web searches and return results to you.
+Only use the web-searcher when you genuinely need external information not available in the codebase."#;
 
     let important_note = format!(
         "=== IMPORTANT ===
@@ -95,6 +95,6 @@ Only use the searcher when you genuinely need external information not available
         role_config,
         "Planner",
         &prompt,
-        Some(vec![searcher_subagent]),
+        Some(vec![web_searcher_subagent]),
     )
 }
