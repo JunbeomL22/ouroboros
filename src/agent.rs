@@ -29,6 +29,7 @@ pub struct SubagentDef {
     pub name: String,
     pub model: String,
     pub description: String,
+    pub prompt: Option<String>,
     pub tools: Vec<String>,
 }
 
@@ -38,7 +39,8 @@ impl SubagentDef {
         Self {
             name: "web-searcher".to_string(),
             model: config.model.clone(),
-            description: "Web search specialist for gathering external information".to_string(),
+            description: "MANDATORY web search agent. Delegate ALL web searches, URL fetches, documentation lookups, and external resource requests to this agent.".to_string(),
+            prompt: Some("You are a web search specialist. Use WebSearch to find information and WebFetch to retrieve specific URLs. Return comprehensive results with sources.".to_string()),
             tools: vec![
                 "WebSearch".to_string(),
                 "WebFetch".to_string(),
@@ -49,13 +51,24 @@ impl SubagentDef {
 
     /// Convert to JSON string for --agents flag
     pub fn to_json(&self) -> String {
-        format!(
-            r#"{{"{}": {{"model": "{}", "description": "{}", "tools": [{}]}}}}"#,
-            self.name,
-            self.model,
-            self.description,
-            self.tools.iter().map(|t| format!("\"{}\"", t)).collect::<Vec<_>>().join(", ")
-        )
+        let tools_json = self.tools.iter().map(|t| format!("\"{}\"", t)).collect::<Vec<_>>().join(", ");
+        match &self.prompt {
+            Some(prompt) => format!(
+                r#"{{"{}": {{"model": "{}", "description": "{}", "prompt": "{}", "tools": [{}]}}}}"#,
+                self.name,
+                self.model,
+                self.description,
+                prompt.replace("\"", "\\\""),
+                tools_json
+            ),
+            None => format!(
+                r#"{{"{}": {{"model": "{}", "description": "{}", "tools": [{}]}}}}"#,
+                self.name,
+                self.model,
+                self.description,
+                tools_json
+            ),
+        }
     }
 }
 
@@ -109,13 +122,24 @@ fn call_claude_code(
             } else {
                 // Merge multiple agents into one JSON object
                 let inner: Vec<String> = agents.iter().map(|a| {
-                    format!(
-                        r#""{}": {{"model": "{}", "description": "{}", "tools": [{}]}}"#,
-                        a.name,
-                        a.model,
-                        a.description,
-                        a.tools.iter().map(|t| format!("\"{}\"", t)).collect::<Vec<_>>().join(", ")
-                    )
+                    let tools_json = a.tools.iter().map(|t| format!("\"{}\"", t)).collect::<Vec<_>>().join(", ");
+                    match &a.prompt {
+                        Some(prompt) => format!(
+                            r#""{}": {{"model": "{}", "description": "{}", "prompt": "{}", "tools": [{}]}}"#,
+                            a.name,
+                            a.model,
+                            a.description,
+                            prompt.replace("\"", "\\\""),
+                            tools_json
+                        ),
+                        None => format!(
+                            r#""{}": {{"model": "{}", "description": "{}", "tools": [{}]}}"#,
+                            a.name,
+                            a.model,
+                            a.description,
+                            tools_json
+                        ),
+                    }
                 }).collect();
                 format!("{{{}}}", inner.join(", "))
             };

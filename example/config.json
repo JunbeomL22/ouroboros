@@ -22,5 +22,5 @@
   "checks": 3,
   "threshold": 3,
   "recheck_threshold": 3,
-  "max_retries": 4
+  "max_tries": 4
 }
