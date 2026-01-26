@@ -60,17 +60,12 @@ Only use browser markers for genuine browser automation needs."#;
 
     let search_instructions = r#"
 
-=== WEB SEARCH (MANDATORY) ===
-IMPORTANT: You MUST use the "web-searcher" subagent for ANY web-related task.
-- DO NOT use WebSearch or WebFetch tools directly - they will fail.
-- ALWAYS delegate to "web-searcher" for: documentation lookups, API references, library usage, version info, external resources.
-- When you need to search or research anything online - delegate to web-searcher.
-- The web-searcher has WebSearch, WebFetch, and Read tools. You do not.
-
-To use web-searcher, call the Task tool with:
-  - subagent_type: "web-searcher"
-  - description: Brief description of what to search
-  - prompt: The search query or URL to fetch"#;
+=== WEB SEARCH ===
+If you need to search the web for information to create a better plan, use the Task tool to delegate to the "web-searcher" subagent:
+- Call: Task tool with subagent_type="web-searcher" and a clear search query in the prompt
+- The web-searcher uses a cheaper model to save tokens
+- Only use when you genuinely need external information not available in the codebase
+- Do NOT use WebSearch directly - always delegate to web-searcher for cost efficiency"#;
 
     let important_note = format!(
         "=== IMPORTANT ===

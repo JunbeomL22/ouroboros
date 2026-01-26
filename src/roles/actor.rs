@@ -36,20 +36,12 @@ The pipeline will automatically save your output to the correct locations:
 You MUST NOT manually create result-*.md, plan-*.md, task-*.md, or similar files.
 Just provide your output in the sections below - the system handles file creation.
 
-=== WEB SEARCH (MANDATORY) ===
-IMPORTANT: You MUST use the "web-searcher" subagent for ANY web-related task.
-- DO NOT use WebSearch or WebFetch tools directly - they will fail.
-- ALWAYS delegate to "web-searcher" for: documentation lookups, API references, library usage, version info, external resources.
-- When the plan mentions searching, researching, or looking up anything online - delegate to web-searcher.
-- The web-searcher has WebSearch, WebFetch, and Read tools. You do not.
-
-To use web-searcher, call the Task tool with:
-  - subagent_type: "web-searcher"
-  - description: Brief description of what to search
-  - prompt: The search query or URL to fetch
-
-Example: To search for "rust async tutorial", delegate like this:
-Task(subagent_type="web-searcher", description="search rust async", prompt="Search for rust async tutorial and summarize the key concepts")
+=== WEB SEARCH ===
+If you need to search the web for external information, use the Task tool to delegate to the "web-searcher" subagent:
+- Call: Task tool with subagent_type="web-searcher" and a clear search query in the prompt
+- The web-searcher uses a cheaper model to save tokens
+- Only use when you genuinely need external information not available in the codebase
+- Do NOT use WebSearch directly - always delegate to web-searcher for cost efficiency
 
 ===HOW===
 Explain HOW you executed the plan. Document your process and methodology:

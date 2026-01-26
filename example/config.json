@@ -5,9 +5,9 @@
   "planner": { "cli": "claude", "model": "opus", "provider": "anthropic" },
   "actor": { "cli": "claude", "model": "opus", "provider": "anthropic" },
   "checker": { "cli": "claude", "model": "MiniMax-M2.1", "provider": "minimax" },
-  "minor_fixer": { "cli": "claude", "model": "MiniMax-M2.1", "provider": "minimax" },
+  "minor_fixer": { "cli": "claude", "model": "haiku", "provider": "anthropic" },
   "major_fixer": { "cli": "claude", "model": "opus", "provider": "anthropic" },
-  "web-searcher": { "cli": "claude", "model": "sonnet", "provider": "anthropic" },
+  "web-searcher": { "cli": "claude", "model": "haiku", "provider": "anthropic" },
 
   "tasks_dir": "./tasks",
   "results_dir": "./results",

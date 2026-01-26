@@ -39,36 +39,27 @@ impl SubagentDef {
         Self {
             name: "web-searcher".to_string(),
             model: config.model.clone(),
-            description: "MANDATORY web search agent. Delegate ALL web searches, URL fetches, documentation lookups, and external resource requests to this agent.".to_string(),
-            prompt: Some("You are a web search specialist. Use WebSearch to find information and WebFetch to retrieve specific URLs. Return comprehensive results with sources.".to_string()),
+            description: "Web search specialist. Delegates web searches to a cheaper model to save tokens.".to_string(),
             tools: vec![
                 "WebSearch".to_string(),
                 "WebFetch".to_string(),
-                "Read".to_string(),
             ],
         }
     }
 
     /// Convert to JSON string for --agents flag
+    /// Format: {"name": {"description": "...", "prompt": "...", "model": "...", "tools": [...]}}
     pub fn to_json(&self) -> String {
+        let prompt = "You are a web search specialist. Search the web for the requested information and return a concise summary of relevant findings. Focus only on answering the specific question asked.";
         let tools_json = self.tools.iter().map(|t| format!("\"{}\"", t)).collect::<Vec<_>>().join(", ");
-        match &self.prompt {
-            Some(prompt) => format!(
-                r#"{{"{}": {{"model": "{}", "description": "{}", "prompt": "{}", "tools": [{}]}}}}"#,
-                self.name,
-                self.model,
-                self.description,
-                prompt.replace("\"", "\\\""),
-                tools_json
-            ),
-            None => format!(
-                r#"{{"{}": {{"model": "{}", "description": "{}", "tools": [{}]}}}}"#,
-                self.name,
-                self.model,
-                self.description,
-                tools_json
-            ),
-        }
+        format!(
+            r#"{{"{}": {{"description": "{}", "prompt": "{}", "model": "{}", "tools": [{}]}}}}"#,
+            self.name,
+            self.description,
+            prompt,
+            self.model,
+            tools_json
+        )
     }
 }
 
