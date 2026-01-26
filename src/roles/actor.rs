@@ -37,9 +37,11 @@ You MUST NOT manually create result-*.md, plan-*.md, task-*.md, or similar files
 Just provide your output in the sections below - the system handles file creation.
 
 === WEB SEARCH ===
-If you need to search the web for external information, delegate to the "web-searcher" agent.
-The web-searcher will perform web searches and return results to you.
-Only use the web-searcher when you genuinely need external information not available in the codebase.
+If you need to search the web for external information, use the Task tool to delegate to the "web-searcher" subagent:
+- Call: Task tool with subagent_type="web-searcher" and a clear search query in the prompt
+- The web-searcher uses a cheaper model to save tokens
+- Only use when you genuinely need external information not available in the codebase
+- Do NOT use WebSearch directly - always delegate to web-searcher for cost efficiency
 
 ===HOW===
 Explain HOW you executed the plan. Document your process and methodology:

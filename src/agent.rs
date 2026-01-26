@@ -38,23 +38,26 @@ impl SubagentDef {
         Self {
             name: "web-searcher".to_string(),
             model: config.model.clone(),
-            description: "Web search specialist for gathering external information".to_string(),
+            description: "Web search specialist. Delegates web searches to a cheaper model to save tokens.".to_string(),
             tools: vec![
                 "WebSearch".to_string(),
                 "WebFetch".to_string(),
-                "Read".to_string(),
             ],
         }
     }
 
     /// Convert to JSON string for --agents flag
+    /// Format: {"name": {"description": "...", "prompt": "...", "model": "...", "tools": [...]}}
     pub fn to_json(&self) -> String {
+        let prompt = "You are a web search specialist. Search the web for the requested information and return a concise summary of relevant findings. Focus only on answering the specific question asked.";
+        let tools_json = self.tools.iter().map(|t| format!("\"{}\"", t)).collect::<Vec<_>>().join(", ");
         format!(
-            r#"{{"{}": {{"model": "{}", "description": "{}", "tools": [{}]}}}}"#,
+            r#"{{"{}": {{"description": "{}", "prompt": "{}", "model": "{}", "tools": [{}]}}}}"#,
             self.name,
-            self.model,
             self.description,
-            self.tools.iter().map(|t| format!("\"{}\"", t)).collect::<Vec<_>>().join(", ")
+            prompt,
+            self.model,
+            tools_json
         )
     }
 }
