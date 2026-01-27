@@ -80,6 +80,7 @@ pub fn call_agent_with_subagents(
         AgentCli::ClaudeCode => call_claude_code(role, prompt, &role_config.model, &role_config.provider, subagents),
         AgentCli::Codex => call_codex(role, prompt, &role_config.model),
         AgentCli::OpenCode => call_opencode(role, prompt, &role_config.model),
+        AgentCli::Gemini => call_gemini(role, prompt, &role_config.model),
     }
 }
 
@@ -324,6 +325,79 @@ fn call_opencode(role: &str, prompt: &str, model: &str) -> Result<String> {
 
     let response =
         String::from_utf8(output.stdout).context("Failed to parse opencode output as UTF-8")?;
+
+    Ok(response.trim().to_string())
+}
+
+/// Check if a role requires agentic mode (file/command execution)
+fn is_agentic_role(role: &str) -> bool {
+    matches!(
+        role.to_lowercase().as_str(),
+        "actor" | "minorfixer" | "majorfixer" | "minor_fixer" | "major_fixer" | "fixer"
+    )
+}
+
+/// Call Gemini CLI
+/// - Agentic roles (Actor, Fixer): use --yolo for file/command execution
+/// - Text-generation roles (Outliner, Planner, etc.): no --yolo, just generate text
+fn call_gemini(role: &str, prompt: &str, model: &str) -> Result<String> {
+    let full_prompt = format!(
+        "You are acting as a {}. Respond only with your output, no explanations.\n\n{}",
+        role, prompt
+    );
+
+    let use_yolo = is_agentic_role(role);
+
+    // Build args based on whether this is an agentic role
+    let mut args: Vec<&str> = vec!["--model", model];
+    if use_yolo {
+        args.push("--yolo");
+    }
+    args.extend_from_slice(&["--output-format", "text"]);
+
+    #[cfg(windows)]
+    let mut cmd = Command::new("cmd");
+    #[cfg(windows)]
+    {
+        let mut cmd_args: Vec<String> = vec!["/C".to_string(), "gemini".to_string()];
+        cmd_args.extend(args.iter().map(|s| s.to_string()));
+        cmd_args.push(full_prompt.clone());
+        cmd.args(&cmd_args);
+    }
+
+    #[cfg(not(windows))]
+    let mut cmd = Command::new("gemini");
+    #[cfg(not(windows))]
+    {
+        cmd.args(&args);
+        cmd.arg(&full_prompt);
+    }
+
+    let child = cmd
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .context("Failed to spawn gemini CLI")?;
+
+    let output = child
+        .wait_with_output()
+        .context("Failed to wait for gemini CLI")?;
+
+    if !output.status.success() {
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        let exit_code = output.status.code().map(|c| c.to_string()).unwrap_or_else(|| "unknown".to_string());
+        anyhow::bail!(
+            "Gemini CLI failed (exit code {}):\nstdout: {}\nstderr: {}",
+            exit_code,
+            stdout,
+            stderr
+        );
+    }
+
+    let response =
+        String::from_utf8(output.stdout).context("Failed to parse gemini output as UTF-8")?;
 
     Ok(response.trim().to_string())
 }

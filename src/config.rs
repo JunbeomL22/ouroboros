@@ -13,6 +13,7 @@ pub enum AgentCli {
     Codex,
     #[serde(alias = "opencode")]
     OpenCode,
+    Gemini,
 }
 
 /// Supported API providers for Claude Code
@@ -36,6 +37,7 @@ impl std::fmt::Display for AgentCli {
             AgentCli::ClaudeCode => write!(f, "claude"),
             AgentCli::Codex => write!(f, "codex"),
             AgentCli::OpenCode => write!(f, "opencode"),
+            AgentCli::Gemini => write!(f, "gemini"),
         }
     }
 }
@@ -48,8 +50,9 @@ impl std::str::FromStr for AgentCli {
             "claude-code" | "claude" => Ok(AgentCli::ClaudeCode),
             "codex" => Ok(AgentCli::Codex),
             "opencode" | "open-code" => Ok(AgentCli::OpenCode),
+            "gemini" => Ok(AgentCli::Gemini),
             _ => Err(format!(
-                "Unknown agent CLI: {}. Supported: claude, codex, opencode",
+                "Unknown agent CLI: {}. Supported: claude, codex, opencode, gemini",
                 s
             )),
         }

@@ -69,7 +69,7 @@ The Checker classifies issues into two categories:
 
 ### Key Modules
 
-- `agent.rs` - Spawns agent CLI subprocess (claude-code, codex, opencode)
+- `agent.rs` - Spawns agent CLI subprocess (claude-code, codex, opencode, gemini)
 - `secrets.rs` - API key and credential management
 - `pipeline.rs` - Main orchestration loop, retry logic, file I/O
 - `roles/` - Role implementations (outliner, planner, advisor, actor, checker, minor_fixer, major_fixer, splitter)
@@ -104,6 +104,7 @@ Where `{x}` is the task number, `{y}` is the attempt number, and `{n}` is the ch
 | `claude` / `claude-code` | Claude Code CLI (supports multiple providers) |
 | `codex` | OpenAI Codex CLI |
 | `opencode` | OpenCode CLI |
+| `gemini` | Google Gemini CLI |
 
 ### Searcher Subagent
 
