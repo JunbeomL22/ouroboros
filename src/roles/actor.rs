@@ -36,12 +36,8 @@ The pipeline will automatically save your output to the correct locations:
 You MUST NOT manually create result-*.md, plan-*.md, task-*.md, or similar files.
 Just provide your output in the sections below - the system handles file creation.
 
-=== WEB SEARCH ===
-If you need to search the web for external information, use the Task tool to delegate to the "web-searcher" subagent:
-- Call: Task tool with subagent_type="web-searcher" and a clear search query in the prompt
-- The web-searcher uses a cheaper model to save tokens
-- Only use when you genuinely need external information not available in the codebase
-- Do NOT use WebSearch directly - always delegate to web-searcher for cost efficiency
+=== WEB SEARCH (if needed) ===
+A "web-searcher" agent is available for web searches. Only use it when you genuinely need external information not in the codebase. This saves tokens by using a cheaper model for searches.
 
 ===HOW===
 Explain HOW you executed the plan. Document your process and methodology:

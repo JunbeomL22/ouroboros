@@ -40,6 +40,7 @@ impl SubagentDef {
             name: "web-searcher".to_string(),
             model: config.model.clone(),
             description: "Web search specialist. Delegates web searches to a cheaper model to save tokens.".to_string(),
+            prompt: None,
             tools: vec![
                 "WebSearch".to_string(),
                 "WebFetch".to_string(),
@@ -197,8 +198,15 @@ fn call_claude_code(
         .context("Failed to wait for claude CLI")?;
 
     if !output.status.success() {
+        let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
-        anyhow::bail!("Claude CLI failed: {}", stderr);
+        let exit_code = output.status.code().map(|c| c.to_string()).unwrap_or_else(|| "unknown".to_string());
+        anyhow::bail!(
+            "Claude CLI failed (exit code {}):\nstdout: {}\nstderr: {}",
+            exit_code,
+            stdout,
+            stderr
+        );
     }
 
     let response =
