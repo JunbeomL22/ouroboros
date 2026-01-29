@@ -50,11 +50,43 @@ RULES FOR EACH TASK:
 3. MUST include global constraints inline
 4. Specify WHAT (artifact), WHERE (file path), SUCCESS CRITERIA
 
-CONTEXT HANDOFF:
-- Each task runs in separate session with NO memory
-- If task creates something next task needs, specify ABSOLUTE PATH
-- Example: "Write schema to C:/project/docs/schema.json"
-- Example: "Read C:/project/docs/schema.json and implement"
+CONTEXT HANDOFF (CRITICAL):
+- Each task runs in a SEPARATE SESSION with NO MEMORY of previous tasks
+- The ONLY way to pass information is through PHYSICAL FILES (.md files)
+- If a task extracts/analyzes information, it MUST SAVE to a .md file
+- The next task MUST READ that .md file to get the context
+
+PATTERN FOR INFORMATION EXTRACTION:
+Task N: "Read [source], extract [info], SAVE TO [output.md]"
+Task N+1: "Read [output.md] from previous task and [do something with it]"
+
+BAD EXAMPLES (context is LOST):
+- "Read spsc.md and analyze syntax" ← Analysis vanishes after session!
+- "Extract design patterns from code" ← Extraction result is lost!
+
+GOOD EXAMPLES (context is PRESERVED):
+- "Read C:/project/spsc.md, extract all C++ syntax elements, SAVE analysis to C:/project/outputs/spsc-analysis.md"
+- "Read C:/project/outputs/spsc-analysis.md (from previous task) and create syntax documentation in C:/project/docs/syntax.md"
+
+RULES:
+1. Information extraction task → MUST specify output .md file path
+2. Next task that needs that info → MUST specify input .md file path from previous task
+3. Use ABSOLUTE PATHS for all file references
+4. Output directory should be ./outputs/ or similar for intermediate files
+
+SIMPLIFICATION RULE:
+If a task is simple enough to complete in ONE session (read + process + output),
+combine it into a SINGLE task instead of splitting into multiple tasks.
+
+Example - DO split (complex):
+- Task 1: "Analyze 10 source files, extract patterns, SAVE to analysis.md"
+- Task 2: "Read analysis.md and generate documentation"
+
+Example - DON'T split (simple):
+- Single task: "Read config.json and add a new field 'timeout' with value 30"
+- Single task: "Read utils.rs, find the parse function, fix the off-by-one bug"
+
+Only split when information MUST be preserved across sessions.
 
 OUTPUT FORMAT:
 Return ONLY JSON in this exact format:
