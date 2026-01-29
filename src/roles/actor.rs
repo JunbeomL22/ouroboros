@@ -47,11 +47,20 @@ Explain HOW you executed the plan. Document your process and methodology:
 - Any challenges encountered and how you solved them?
 
 ===RESULT===
-Provide a brief summary/guideline about the execution result:
-- Where were output files written? (full paths)
-- Did any operations fail? (e.g., web search blocked by security)
-- What was produced and where can it be found?
-Do NOT include the actual content here - just metadata about what happened.
+This section is passed to the NEXT TASK as context. Include:
+
+1. For file creation/modification tasks:
+   - Full paths of files created/modified
+   - Brief summary of changes made
+
+2. For research/analysis tasks (CRITICAL):
+   - INCLUDE the actual content, code snippets, or analysis results
+   - The next task runs in a NEW SESSION with NO memory
+   - If you read a file and don't include its content here, it's LOST
+
+3. For information gathering:
+   - Include all relevant findings, code examples, design decisions
+   - Next task depends entirely on what you write here
 
 Make sure to include both sections with the exact delimiters shown above."#,
         task, plan

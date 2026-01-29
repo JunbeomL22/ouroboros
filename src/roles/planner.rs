@@ -70,7 +70,13 @@ If you need to search the web for information to create a better plan, use the T
     let important_note = format!(
         "=== IMPORTANT ===
 - DO NOT create task-*.md files in the current directory or any other location. The task files are read-only inputs managed by the system.
-- DO NOT execute any actions, modify files, run commands, or implement anything. Your ONLY job is to output a written plan. The Actor role will execute the plan later.{}{}",
+- DO NOT execute any actions, modify files, run commands, or implement anything. Your ONLY job is to output a written plan. The Actor role will execute the plan later.
+
+=== CONTEXT HANDOFF ===
+The next task runs in a SEPARATE SESSION with no memory of this one.
+- If this task reads files or gathers information, plan for the Actor to INCLUDE that content in the RESULT section
+- The RESULT section is the ONLY way to pass context to the next task
+- For research/analysis tasks: explicitly plan to output findings, code snippets, and analysis in the result{}{}",
         browser_instructions, search_instructions
     );
 
