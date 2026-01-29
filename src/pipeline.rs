@@ -74,11 +74,12 @@ pub async fn run(config: &AgentConfig) -> Result<()> {
         let existing_tasks = collect_tasks(&config.tasks_dir).unwrap_or_default();
         let start_num = existing_tasks.iter().map(|(n, _)| *n).max().unwrap_or(0) + 1;
 
-        println!("[Splitter] Creating {} task files (starting from task-{})...", task_descriptions.len(), start_num);
+        let total_tasks = task_descriptions.len();
+        println!("[Splitter] Creating {} task files (starting from task-{})...", total_tasks, start_num);
         for (i, desc) in task_descriptions.iter().enumerate() {
             let task_num = start_num + i;
             let task_path = config.tasks_dir.join(format!("task-{}.md", task_num));
-            let content = format_task(task_num, desc);
+            let content = format_task(task_num, total_tasks, desc, &meta_content);
             fs::write(&task_path, &content)
                 .context(format!("Failed to write task-{}.md", task_num))?;
             println!("  [Created] task-{}.md: {}", task_num, desc);

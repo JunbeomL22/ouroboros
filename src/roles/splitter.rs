@@ -93,13 +93,28 @@ Now split the goal into tasks:"#,
     Ok(tasks)
 }
 
-/// Format a task description into markdown content
-pub fn format_task(task_num: usize, description: &str) -> String {
+/// Format a task description into markdown content with full context
+pub fn format_task(task_num: usize, total_tasks: usize, description: &str, original_goal: &str) -> String {
     format!(
-        r#"# Task {}
+        r#"# Task {task_num} of {total_tasks}
 
-{}
+## Original Goal
+
+{original_goal}
+
+## Current Task
+
+{description}
+
+## Context
+
+- This is task {task_num} in a sequence of {total_tasks} tasks
+- Each task builds upon previous tasks
+- Focus on completing THIS task's objective while keeping the original goal in mind
 "#,
-        task_num, description
+        task_num = task_num,
+        total_tasks = total_tasks,
+        description = description,
+        original_goal = original_goal.trim()
     )
 }
