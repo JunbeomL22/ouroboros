@@ -33,30 +33,33 @@ META GOAL:
 Rules:
 - Focus on WHAT to achieve, not HOW (implementation details come later)
 - Tasks should be substantial and self-contained (not micro-tasks)
-- Each task runs in a separate session with no shared memory between tasks
-- Only add context handoff files when absolutely necessary
-- For VERY complex tasks: split into two sequential tasks:
-  1. First task: Create a detailed planning document (e.g., `plan-feature-x.md`) analyzing requirements, dependencies, and implementation approach
-  2. Second task: Reference that planning document and execute the actual implementation
-  This pattern ensures complex work is thoroughly planned before execution
+- Each task runs in a separate session with NO shared memory between tasks
+- The ONLY way to pass context between tasks is through explicit file references
+- Every task that produces research, analysis, or documentation MUST specify an output file path
+- Every task that depends on previous work MUST explicitly reference the input files to read
+
+Context Chain Rules (CRITICAL):
+- Tasks run in isolated sessions - they cannot see what previous tasks did unless you tell them which files to read
+- If task N produces a document, specify: "Write output to `docs/path/filename.md`"
+- If task N+1 needs that document, specify: "Read `docs/path/filename.md` for context"
+- Use consistent, descriptive file paths (e.g., `docs/research/`, `docs/design/`, `docs/specs/`)
+- For implementation tasks, reference all relevant design/spec documents
 
 Task Description Guidelines:
 - Each task description should be 2-4 sentences minimum
 - Include the specific objective and expected outcome
-- Mention any key constraints or requirements relevant to that task
-- Specify what files, modules, or components the task should focus on (if applicable)
+- ALWAYS specify output file path if the task produces a document or artifact
+- ALWAYS specify input file paths if the task depends on previous work
 - Include acceptance criteria: what defines "done" for this task
-- If the task depends on understanding previous work, note what context is needed
 
-Example of a GOOD task description:
-"Implement user authentication module with JWT token support. The module should handle login, logout, and token refresh operations. Store tokens securely and implement proper expiration handling. Acceptance: users can log in, receive a valid JWT, and access protected routes."
+Example of GOOD task descriptions with context chain:
+Task 1: "Research authentication patterns and JWT implementations. Analyze security best practices and common pitfalls. Write findings to `docs/research/auth-patterns.md`. Acceptance: `docs/research/auth-patterns.md` exists with comprehensive analysis."
+Task 2: "Design the authentication module based on research in `docs/research/auth-patterns.md`. Define interfaces, data flow, and security measures. Write design to `docs/design/auth-module.md`. Acceptance: `docs/design/auth-module.md` exists with complete design specification."
+Task 3: "Implement authentication module following the design in `docs/design/auth-module.md`. Create the module in `src/auth/`. Acceptance: implementation matches design, tests pass."
 
-Example of a BAD task description:
-"Add auth" (too vague, no context or acceptance criteria)
-
-Example of COMPLEX task splitting (two-phase pattern):
-Task 1: "Create a detailed planning document for the payment integration system. Analyze the current codebase structure, identify integration points, document API requirements, and outline the implementation steps. Write the plan to `plan-payment-integration.md`. Acceptance: comprehensive planning document exists with clear implementation roadmap."
-Task 2: "Implement the payment integration system following the plan in `plan-payment-integration.md`. Execute each step outlined in the planning document. Acceptance: all planned features implemented and tested as specified in the plan."
+Example of BAD task descriptions:
+- "Research auth patterns" (no output file - next task can't find it)
+- "Implement based on previous research" (no input file reference - task can't find the research)
 
 Return ONLY JSON:
 {{
@@ -64,8 +67,9 @@ Return ONLY JSON:
     {{
       "name": "Descriptive goal name",
       "tasks": [
-        "Detailed task 1 description with objective, scope, and acceptance criteria",
-        "Detailed task 2 description with objective, scope, and acceptance criteria"
+        "Task 1 description. Write output to `docs/category/output-file.md`. Acceptance: file exists with required content.",
+        "Task 2 description. Read `docs/category/output-file.md` for context. Write output to `docs/category/next-file.md`. Acceptance: file exists.",
+        "Implementation task. Read `docs/category/next-file.md` for design. Modify `src/module/`. Acceptance: implementation complete, tests pass."
       ]
     }}
   ]
