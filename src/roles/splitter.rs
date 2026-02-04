@@ -25,60 +25,51 @@ pub struct Goal {
 /// Split a meta task into goals and their individual tasks
 pub fn split(role_config: &RoleConfig, meta_task: &str) -> Result<Vec<Task>> {
     let prompt = format!(
-        r#"You are a task splitter. Break down the following meta goal into GOALS, then split each goal into meaningful tasks.
+        r#"Split this meta goal into well-structured goals and detailed tasks.
 
 META GOAL:
 {}
 
-=== SPLITTING PHILOSOPHY ===
+Rules:
+- Focus on WHAT to achieve, not HOW (implementation details come later)
+- Tasks should be substantial and self-contained (not micro-tasks)
+- Each task runs in a separate session with no shared memory between tasks
+- Only add context handoff files when absolutely necessary
+- For VERY complex tasks: split into two sequential tasks:
+  1. First task: Create a detailed planning document (e.g., `plan-feature-x.md`) analyzing requirements, dependencies, and implementation approach
+  2. Second task: Reference that planning document and execute the actual implementation
+  This pattern ensures complex work is thoroughly planned before execution
 
-1. GOAL-ORIENTED, NOT ACTION-ORIENTED
-   - Focus on WHAT to achieve, not HOW to do it
-   - Each task should have a clear PURPOSE and DELIVERABLE
-   - Avoid micro-tasks like "read file X" or "create variable Y"
+Task Description Guidelines:
+- Each task description should be 2-4 sentences minimum
+- Include the specific objective and expected outcome
+- Mention any key constraints or requirements relevant to that task
+- Specify what files, modules, or components the task should focus on (if applicable)
+- Include acceptance criteria: what defines "done" for this task
+- If the task depends on understanding previous work, note what context is needed
 
-2. MEANINGFUL TASK SIZE
-   - A task should be substantial enough to produce a tangible outcome
-   - Combine related small actions into one cohesive task
-   - Think "implement feature X" not "write function A, then function B, then..."
+Example of a GOOD task description:
+"Implement user authentication module with JWT token support. The module should handle login, logout, and token refresh operations. Store tokens securely and implement proper expiration handling. Acceptance: users can log in, receive a valid JWT, and access protected routes."
 
-3. CONTEXT CONTINUITY
-   - Each task runs in a SEPARATE SESSION with NO MEMORY
-   - If context must flow to the next task, specify an output .md file
-   - Use ./outputs/ directory for intermediate context files
+Example of a BAD task description:
+"Add auth" (too vague, no context or acceptance criteria)
 
-=== TASK WRITING GUIDELINES ===
-
-GOOD task descriptions:
-- "Implement user authentication module with JWT support"
-- "Create REST API endpoints for product CRUD operations"
-- "Refactor database layer to support async operations"
-
-BAD task descriptions (too granular):
-- "Create auth.rs file"
-- "Add login function"
-- "Add logout function"
-- "Add token validation"
-
-=== CONTEXT HANDOFF ===
-
-When a task produces information needed by subsequent tasks:
-- Explicitly state: "Save analysis/findings to ./outputs/[descriptive-name].md"
-- Next task should reference: "Using context from ./outputs/[descriptive-name].md, ..."
-
-=== OUTPUT FORMAT ===
+Example of COMPLEX task splitting (two-phase pattern):
+Task 1: "Create a detailed planning document for the payment integration system. Analyze the current codebase structure, identify integration points, document API requirements, and outline the implementation steps. Write the plan to `plan-payment-integration.md`. Acceptance: comprehensive planning document exists with clear implementation roadmap."
+Task 2: "Implement the payment integration system following the plan in `plan-payment-integration.md`. Execute each step outlined in the planning document. Acceptance: all planned features implemented and tested as specified in the plan."
 
 Return ONLY JSON:
 {{
   "goals": [
     {{
-      "name": "Clear goal name",
-      "tasks": ["Meaningful task 1 description", "Meaningful task 2 description"]
+      "name": "Descriptive goal name",
+      "tasks": [
+        "Detailed task 1 description with objective, scope, and acceptance criteria",
+        "Detailed task 2 description with objective, scope, and acceptance criteria"
+      ]
     }}
   ]
-}}
-
-No markdown, no explanation. Just JSON."#,
+}}"#,
         meta_task
     );
 
@@ -108,41 +99,18 @@ No markdown, no explanation. Just JSON."#,
     Ok(tasks)
 }
 
-/// Format a task into markdown content with clear context hierarchy
-pub fn format_task(task: &Task, task_index: usize, total_tasks: usize, meta_goal: &str) -> String {
+/// Format a task into markdown content
+pub fn format_task(task: &Task, _task_index: usize, _total_tasks: usize, _meta_goal: &str) -> String {
     format!(
-        r#"# Context
+        r#"# Goal
 
-## Meta Goal (Big Picture)
+{goal}
 
-{meta_goal}
-
----
-
-## Current Focus
-
-**Goal**: {goal}
-
-**Task {current} of {total}**
-
----
-
-# Your Task
+# Task
 
 {description}
-
----
-
-## Notes
-
-- This task is part of a larger objective described above
-- Focus ONLY on completing this specific task
-- If you need to pass context to subsequent tasks, save findings to `./outputs/` as `.md` files
 "#,
-        meta_goal = meta_goal.trim(),
         goal = task.goal.trim(),
-        current = task_index + 1,
-        total = total_tasks,
         description = task.description.trim()
     )
 }

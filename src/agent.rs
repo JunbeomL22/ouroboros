@@ -407,13 +407,15 @@ fn call_gemini(role: &str, prompt: &str, model: &str) -> Result<String> {
 /// Uses --print mode for non-interactive output (implicitly adds --yolo for agentic roles)
 /// For text-generation roles: uses --print --output-format text --final-message-only
 fn call_kimi(role: &str, prompt: &str, model: &str) -> Result<String> {
+    use std::io::Write;
+
     let full_prompt = format!(
         "You are acting as a {}. Respond only with your output, no explanations.\n\n{}",
         role, prompt
     );
 
-    // Build args: --model, --print for non-interactive, -p for prompt
-    // Note: --print implicitly adds --yolo for auto-approval
+    // Build args: --model, --print for non-interactive
+    // Pass prompt via stdin to avoid Windows command line escaping issues
     let args: Vec<String> = vec![
         "--model".to_string(),
         model.to_string(),
@@ -421,8 +423,6 @@ fn call_kimi(role: &str, prompt: &str, model: &str) -> Result<String> {
         "--output-format".to_string(),
         "text".to_string(),
         "--final-message-only".to_string(),
-        "-p".to_string(),
-        full_prompt,
     ];
 
     #[cfg(windows)]
@@ -439,12 +439,22 @@ fn call_kimi(role: &str, prompt: &str, model: &str) -> Result<String> {
     #[cfg(not(windows))]
     cmd.args(&args);
 
-    let child = cmd
+    // Force UTF-8 encoding for Python-based CLI to avoid cp949 encoding errors on Windows
+    cmd.env("PYTHONIOENCODING", "utf-8");
+    cmd.env("PYTHONUTF8", "1");
+
+    let mut child = cmd
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
         .context("Failed to spawn kimi CLI")?;
+
+    // Write prompt to stdin
+    if let Some(mut stdin) = child.stdin.take() {
+        stdin.write_all(full_prompt.as_bytes())
+            .context("Failed to write prompt to kimi stdin")?;
+    }
 
     let output = child
         .wait_with_output()

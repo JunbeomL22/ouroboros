@@ -93,12 +93,6 @@ fn parse_actor_output(output: &str) -> Result<ActorOutput> {
     let how_marker = "===HOW===";
     let result_marker = "===RESULT===";
 
-    let how_start = output.find(how_marker).ok_or_else(|| {
-        anyhow::anyhow!(
-            "Actor output missing ===HOW=== section.\n\nActual output received:\n---\n{}\n---",
-            output
-        )
-    })?;
     let result_start = output.find(result_marker).ok_or_else(|| {
         anyhow::anyhow!(
             "Actor output missing ===RESULT=== section.\n\nActual output received:\n---\n{}\n---",
@@ -106,9 +100,18 @@ fn parse_actor_output(output: &str) -> Result<ActorOutput> {
         )
     })?;
 
-    let how = output[how_start + how_marker.len()..result_start]
-        .trim()
-        .to_string();
+    // HOW section is optional - some LLMs may skip it
+    let how = if let Some(how_start) = output.find(how_marker) {
+        if how_start < result_start {
+            output[how_start + how_marker.len()..result_start].trim().to_string()
+        } else {
+            // HOW appears after RESULT - extract from there to end or next section
+            output[how_start + how_marker.len()..].trim().to_string()
+        }
+    } else {
+        String::new()
+    };
+
     let result = output[result_start + result_marker.len()..]
         .trim()
         .to_string();
