@@ -101,10 +101,13 @@ Where `{x}` is the task number, `{y}` is the attempt number, and `{n}` is the ch
 
 | CLI | Description |
 |-----|-------------|
-| `claude` / `claude-code` | Claude Code CLI (supports multiple providers) |
+| `claude` / `claude-code` | Claude Code CLI (supports multiple providers, web-searcher subagent) |
 | `codex` | OpenAI Codex CLI |
 | `opencode` | OpenCode CLI |
 | `gemini` | Google Gemini CLI |
+| `kimi` | Kimi CLI (Moonshot AI) |
+
+**Note**: The web-searcher subagent is only available when using `claude` / `claude-code` CLI. Other CLIs will not include web search instructions or subagent definitions.
 
 ### Searcher Subagent
 

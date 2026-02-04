@@ -81,6 +81,7 @@ pub fn call_agent_with_subagents(
         AgentCli::Codex => call_codex(role, prompt, &role_config.model),
         AgentCli::OpenCode => call_opencode(role, prompt, &role_config.model),
         AgentCli::Gemini => call_gemini(role, prompt, &role_config.model),
+        AgentCli::Kimi => call_kimi(role, prompt, &role_config.model),
     }
 }
 
@@ -398,6 +399,71 @@ fn call_gemini(role: &str, prompt: &str, model: &str) -> Result<String> {
 
     let response =
         String::from_utf8(output.stdout).context("Failed to parse gemini output as UTF-8")?;
+
+    Ok(response.trim().to_string())
+}
+
+/// Call Kimi CLI
+/// Uses --print mode for non-interactive output (implicitly adds --yolo for agentic roles)
+/// For text-generation roles: uses --print --output-format text --final-message-only
+fn call_kimi(role: &str, prompt: &str, model: &str) -> Result<String> {
+    let full_prompt = format!(
+        "You are acting as a {}. Respond only with your output, no explanations.\n\n{}",
+        role, prompt
+    );
+
+    // Build args: --model, --print for non-interactive, -p for prompt
+    // Note: --print implicitly adds --yolo for auto-approval
+    let args: Vec<String> = vec![
+        "--model".to_string(),
+        model.to_string(),
+        "--print".to_string(),
+        "--output-format".to_string(),
+        "text".to_string(),
+        "--final-message-only".to_string(),
+        "-p".to_string(),
+        full_prompt,
+    ];
+
+    #[cfg(windows)]
+    let mut cmd = Command::new("cmd");
+    #[cfg(windows)]
+    {
+        let mut cmd_args: Vec<String> = vec!["/C".to_string(), "kimi".to_string()];
+        cmd_args.extend(args);
+        cmd.args(&cmd_args);
+    }
+
+    #[cfg(not(windows))]
+    let mut cmd = Command::new("kimi");
+    #[cfg(not(windows))]
+    cmd.args(&args);
+
+    let child = cmd
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .context("Failed to spawn kimi CLI")?;
+
+    let output = child
+        .wait_with_output()
+        .context("Failed to wait for kimi CLI")?;
+
+    if !output.status.success() {
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        let exit_code = output.status.code().map(|c| c.to_string()).unwrap_or_else(|| "unknown".to_string());
+        anyhow::bail!(
+            "Kimi CLI failed (exit code {}):\nstdout: {}\nstderr: {}",
+            exit_code,
+            stdout,
+            stderr
+        );
+    }
+
+    let response =
+        String::from_utf8(output.stdout).context("Failed to parse kimi output as UTF-8")?;
 
     Ok(response.trim().to_string())
 }

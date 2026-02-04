@@ -1,6 +1,6 @@
 use anyhow::Result;
 use crate::agent::{call_agent_with_subagents, SubagentDef};
-use crate::config::RoleConfig;
+use crate::config::{AgentCli, RoleConfig};
 
 /// Context from a previously completed task (only how and result)
 pub struct PrevTaskContext<'a> {
@@ -18,8 +18,8 @@ pub fn plan(
     advisor_feedback: Option<&str>,
     prev_context: Option<PrevTaskContext>,
 ) -> Result<String> {
-    // Create web-searcher subagent definition
-    let web_searcher_subagent = SubagentDef::web_searcher_from_config(web_searcher_config);
+    // Web-searcher subagent is only available for ClaudeCode CLI
+    let supports_subagents = role_config.cli == AgentCli::ClaudeCode;
 
     let context = match prev_context {
         Some(ctx) => {
@@ -58,14 +58,18 @@ Take screenshot
 
 Only use browser markers for genuine browser automation needs."#;
 
-    let search_instructions = r#"
+    let search_instructions = if supports_subagents {
+        r#"
 
 === WEB SEARCH ===
 If you need to search the web for information to create a better plan, use the Task tool to delegate to the "web-searcher" subagent:
 - Call: Task tool with subagent_type="web-searcher" and a clear search query in the prompt
 - The web-searcher uses a cheaper model to save tokens
 - Only use when you genuinely need external information not available in the codebase
-- Do NOT use WebSearch directly - always delegate to web-searcher for cost efficiency"#;
+- Do NOT use WebSearch directly - always delegate to web-searcher for cost efficiency"#
+    } else {
+        ""
+    };
 
     let important_note = format!(
         "=== IMPORTANT ===
@@ -99,10 +103,17 @@ The next task runs in a SEPARATE SESSION with no memory of this one.
         ),
     };
 
+    // Only pass subagents when using ClaudeCode CLI
+    let subagents = if supports_subagents {
+        Some(vec![SubagentDef::web_searcher_from_config(web_searcher_config)])
+    } else {
+        None
+    };
+
     call_agent_with_subagents(
         role_config,
         "Planner",
         &prompt,
-        Some(vec![web_searcher_subagent]),
+        subagents,
     )
 }

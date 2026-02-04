@@ -79,7 +79,7 @@ pub async fn run(config: &AgentConfig) -> Result<()> {
         for (i, task) in tasks.iter().enumerate() {
             let task_num = start_num + i;
             let task_path = config.tasks_dir.join(format!("task-{}.md", task_num));
-            let content = format_task(task);
+            let content = format_task(task, i, total_tasks, &meta_content);
             fs::write(&task_path, &content)
                 .context(format!("Failed to write task-{}.md", task_num))?;
             println!("  [Created] task-{}.md ({}): {}", task_num, task.goal, task.description);

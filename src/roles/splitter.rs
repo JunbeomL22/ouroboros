@@ -25,80 +25,55 @@ pub struct Goal {
 /// Split a meta task into goals and their individual tasks
 pub fn split(role_config: &RoleConfig, meta_task: &str) -> Result<Vec<Task>> {
     let prompt = format!(
-        r#"You are a task splitter. Break down the following meta goal into separate GOALS, then split each goal into tasks.
+        r#"You are a task splitter. Break down the following meta goal into GOALS, then split each goal into meaningful tasks.
 
 META GOAL:
 {}
 
-STEP 1 - IDENTIFY GOALS:
-Extract distinct goals from the meta goal. Each goal is a cohesive feature or objective.
-Example meta: "Create user auth and add REST API for products"
-Goals: ["User authentication system", "Product REST API"]
+=== SPLITTING PHILOSOPHY ===
 
-STEP 2 - IDENTIFY GLOBAL CONSTRAINTS:
-Extract ALL constraints that apply across goals:
-- Technology restrictions (e.g., "do not use tokio", "use async-std")
-- Architecture requirements (e.g., "must use epoll", "thread-safe")
-- Style requirements (e.g., "follow existing patterns")
+1. GOAL-ORIENTED, NOT ACTION-ORIENTED
+   - Focus on WHAT to achieve, not HOW to do it
+   - Each task should have a clear PURPOSE and DELIVERABLE
+   - Avoid micro-tasks like "read file X" or "create variable Y"
 
-STEP 3 - SPLIT EACH GOAL INTO TASKS:
-For each goal, create specific tasks. EMBED constraints in every task.
+2. MEANINGFUL TASK SIZE
+   - A task should be substantial enough to produce a tangible outcome
+   - Combine related small actions into one cohesive task
+   - Think "implement feature X" not "write function A, then function B, then..."
 
-RULES FOR EACH TASK:
-1. ONE clear objective only - no "and" or "then"
-2. Must be independently verifiable
-3. MUST include global constraints inline
-4. Specify WHAT (artifact), WHERE (file path), SUCCESS CRITERIA
+3. CONTEXT CONTINUITY
+   - Each task runs in a SEPARATE SESSION with NO MEMORY
+   - If context must flow to the next task, specify an output .md file
+   - Use ./outputs/ directory for intermediate context files
 
-CONTEXT HANDOFF (CRITICAL):
-- Each task runs in a SEPARATE SESSION with NO MEMORY of previous tasks
-- The ONLY way to pass information is through PHYSICAL FILES (.md files)
-- If a task extracts/analyzes information, it MUST SAVE to a .md file
-- The next task MUST READ that .md file to get the context
+=== TASK WRITING GUIDELINES ===
 
-PATTERN FOR INFORMATION EXTRACTION:
-Task N: "Read [source], extract [info], SAVE TO [output.md]"
-Task N+1: "Read [output.md] from previous task and [do something with it]"
+GOOD task descriptions:
+- "Implement user authentication module with JWT support"
+- "Create REST API endpoints for product CRUD operations"
+- "Refactor database layer to support async operations"
 
-BAD EXAMPLES (context is LOST):
-- "Read spsc.md and analyze syntax" ← Analysis vanishes after session!
-- "Extract design patterns from code" ← Extraction result is lost!
+BAD task descriptions (too granular):
+- "Create auth.rs file"
+- "Add login function"
+- "Add logout function"
+- "Add token validation"
 
-GOOD EXAMPLES (context is PRESERVED):
-- "Read C:/project/spsc.md, extract all C++ syntax elements, SAVE analysis to C:/project/outputs/spsc-analysis.md"
-- "Read C:/project/outputs/spsc-analysis.md (from previous task) and create syntax documentation in C:/project/docs/syntax.md"
+=== CONTEXT HANDOFF ===
 
-RULES:
-1. Information extraction task → MUST specify output .md file path
-2. Next task that needs that info → MUST specify input .md file path from previous task
-3. Use ABSOLUTE PATHS for all file references
-4. Output directory should be ./outputs/ or similar for intermediate files
+When a task produces information needed by subsequent tasks:
+- Explicitly state: "Save analysis/findings to ./outputs/[descriptive-name].md"
+- Next task should reference: "Using context from ./outputs/[descriptive-name].md, ..."
 
-SIMPLIFICATION RULE:
-If a task is simple enough to complete in ONE session (read + process + output),
-combine it into a SINGLE task instead of splitting into multiple tasks.
+=== OUTPUT FORMAT ===
 
-Example - DO split (complex):
-- Task 1: "Analyze 10 source files, extract patterns, SAVE to analysis.md"
-- Task 2: "Read analysis.md and generate documentation"
-
-Example - DON'T split (simple):
-- Single task: "Read config.json and add a new field 'timeout' with value 30"
-- Single task: "Read utils.rs, find the parse function, fix the off-by-one bug"
-
-Only split when information MUST be preserved across sessions.
-
-OUTPUT FORMAT:
-Return ONLY JSON in this exact format:
+Return ONLY JSON:
 {{
   "goals": [
     {{
-      "name": "Goal name here",
-      "tasks": ["task 1 description", "task 2 description"]
-    }},
-    {{
-      "name": "Another goal",
-      "tasks": ["task 1", "task 2"]
+      "name": "Clear goal name",
+      "tasks": ["Meaningful task 1 description", "Meaningful task 2 description"]
     }}
   ]
 }}
@@ -133,16 +108,41 @@ No markdown, no explanation. Just JSON."#,
     Ok(tasks)
 }
 
-/// Format a task into markdown content with only its goal context
-pub fn format_task(task: &Task) -> String {
+/// Format a task into markdown content with clear context hierarchy
+pub fn format_task(task: &Task, task_index: usize, total_tasks: usize, meta_goal: &str) -> String {
     format!(
-        r#"# Goal: {}
+        r#"# Context
 
-## Task
+## Meta Goal (Big Picture)
 
-{}
+{meta_goal}
+
+---
+
+## Current Focus
+
+**Goal**: {goal}
+
+**Task {current} of {total}**
+
+---
+
+# Your Task
+
+{description}
+
+---
+
+## Notes
+
+- This task is part of a larger objective described above
+- Focus ONLY on completing this specific task
+- If you need to pass context to subsequent tasks, save findings to `./outputs/` as `.md` files
 "#,
-        task.goal.trim(),
-        task.description.trim()
+        meta_goal = meta_goal.trim(),
+        goal = task.goal.trim(),
+        current = task_index + 1,
+        total = total_tasks,
+        description = task.description.trim()
     )
 }

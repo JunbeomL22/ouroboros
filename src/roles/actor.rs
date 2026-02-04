@@ -1,6 +1,6 @@
 use anyhow::Result;
 use crate::agent::{call_agent_with_subagents, SubagentDef};
-use crate::config::RoleConfig;
+use crate::config::{AgentCli, RoleConfig};
 
 pub struct ActorOutput {
     pub how: String,
@@ -13,8 +13,17 @@ pub fn act(
     task: &str,
     plan: &str,
 ) -> Result<ActorOutput> {
-    // Create web-searcher subagent definition
-    let web_searcher_subagent = SubagentDef::web_searcher_from_config(web_searcher_config);
+    // Web-searcher subagent is only available for ClaudeCode CLI
+    let supports_subagents = role_config.cli == AgentCli::ClaudeCode;
+
+    let web_search_instructions = if supports_subagents {
+        r#"
+=== WEB SEARCH (if needed) ===
+A "web-searcher" agent is available for web searches. Only use it when you genuinely need external information not in the codebase. This saves tokens by using a cheaper model for searches.
+"#
+    } else {
+        ""
+    };
 
     let prompt = format!(
         r#"Task:
@@ -35,10 +44,7 @@ The pipeline will automatically save your output to the correct locations:
 
 You MUST NOT manually create result-*.md, plan-*.md, task-*.md, or similar files.
 Just provide your output in the sections below - the system handles file creation.
-
-=== WEB SEARCH (if needed) ===
-A "web-searcher" agent is available for web searches. Only use it when you genuinely need external information not in the codebase. This saves tokens by using a cheaper model for searches.
-
+{}
 ===HOW===
 Explain HOW you executed the plan. Document your process and methodology:
 - What approach did you take?
@@ -63,14 +69,21 @@ This section is passed to the NEXT TASK as context. Include:
    - Next task depends entirely on what you write here
 
 Make sure to include both sections with the exact delimiters shown above."#,
-        task, plan
+        task, plan, web_search_instructions
     );
+
+    // Only pass subagents when using ClaudeCode CLI
+    let subagents = if supports_subagents {
+        Some(vec![SubagentDef::web_searcher_from_config(web_searcher_config)])
+    } else {
+        None
+    };
 
     let output = call_agent_with_subagents(
         role_config,
         "Actor",
         &prompt,
-        Some(vec![web_searcher_subagent]),
+        subagents,
     )?;
 
     parse_actor_output(&output)
