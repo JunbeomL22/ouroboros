@@ -20,7 +20,8 @@
       "WebFetch(domain:aiengineerguide.com)",
       "Bash(ls -la \"C:\\\\Users\\\\junbe\\\\Projects\\\\ouroboros\\\\example\\\\tasks\"\" 2>/dev/null || dir \"C:UsersjunbeProjectsouroborosexampletasks \")",
       "Bash(dir \"C:\\\\Users\\\\junbe\\\\Projects\\\\ouroboros\\\\example\\\\tasks\")",
-      "Bash(kimi --help:*)"
+      "Bash(kimi --help:*)",
+      "Bash(kimi:*)"
     ]
   }
 }

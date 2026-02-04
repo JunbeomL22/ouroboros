@@ -31,17 +31,17 @@ async fn main() {
 
     println!("\nOuroboros - Recursive Agent Pipeline");
     println!("Roles:");
-    println!("  splitter:     {} / {} ({:?})", config.splitter.cli, config.splitter.model, config.splitter.provider);
+    println!("  splitter:     {}", config.splitter.display());
     println!();
-    println!("  outliner:     {} / {} ({:?})", config.outliner.cli, config.outliner.model, config.outliner.provider);
-    println!("  advisor:      {} / {} ({:?})", config.advisor.cli, config.advisor.model, config.advisor.provider);
-    println!("  planner:      {} / {} ({:?})", config.planner.cli, config.planner.model, config.planner.provider);
-    println!("  actor:        {} / {} ({:?})", config.actor.cli, config.actor.model, config.actor.provider);
-    println!("  checker:      {} / {} ({:?})", config.checker.cli, config.checker.model, config.checker.provider);
-    println!("  minor_fixer:  {} / {} ({:?})", config.minor_fixer.cli, config.minor_fixer.model, config.minor_fixer.provider);
-    println!("  major_fixer:  {} / {} ({:?})", config.major_fixer.cli, config.major_fixer.model, config.major_fixer.provider);
-    println!("");
-    println!("  web-searcher:     {} / {} ({:?})", config.web_searcher.cli, config.web_searcher.model, config.web_searcher.provider);
+    println!("  outliner:     {}", config.outliner.display());
+    println!("  advisor:      {}", config.advisor.display());
+    println!("  planner:      {}", config.planner.display());
+    println!("  actor:        {}", config.actor.display());
+    println!("  checker:      {}", config.checker.display());
+    println!("  minor_fixer:  {}", config.minor_fixer.display());
+    println!("  major_fixer:  {}", config.major_fixer.display());
+    println!();
+    println!("  web-searcher: {}", config.web_searcher.display());
     println!("Directories:");
     println!("  tasks:    {:?}", config.tasks_dir);
     println!("  results:  {:?}", config.results_dir);

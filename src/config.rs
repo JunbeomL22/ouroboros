@@ -79,6 +79,14 @@ impl RoleConfig {
             provider: Provider::default(),
         }
     }
+
+    /// Display string for role config (hides provider for non-Claude CLIs)
+    pub fn display(&self) -> String {
+        match self.cli {
+            AgentCli::ClaudeCode => format!("{} / {} ({:?})", self.cli, self.model, self.provider),
+            _ => format!("{} / {}", self.cli, self.model),
+        }
+    }
 }
 
 /// Agent configuration with per-role CLI and model settings, plus pipeline options
