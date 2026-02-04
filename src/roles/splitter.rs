@@ -33,6 +33,7 @@ META GOAL:
 Rules:
 - Focus on WHAT to achieve, not HOW (implementation details come later)
 - Tasks should be substantial and self-contained (not micro-tasks)
+- Do NOT split tasks too finely - prefer fewer, larger tasks over many small ones
 - Each task runs in a separate session with NO shared memory between tasks
 - The ONLY way to pass context between tasks is through explicit file references
 - Every task that produces research, analysis, or documentation MUST specify an output file path
