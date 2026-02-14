@@ -2,10 +2,10 @@ use anyhow::{Context, Result};
 use std::fs;
 use std::path::{Path, PathBuf};
 use async_std::task;
-use futures::future::join_all;
+use std::time::Duration;
 
 use crate::config::AgentConfig;
-use crate::roles::{plan, advise, act, check, CheckResult, IssueSeverity, PrevTaskContext, split, format_task, outline, fix_minor, fix_major};
+use crate::roles::{plan, advise, act, check, CheckResult, IssueSeverity, PrevTaskContext, split_and_verify, outline, fix_minor, fix_major};
 
 /// Context from a completed task, loaded from files
 pub struct TaskContext {
@@ -67,22 +67,15 @@ pub async fn run(config: &AgentConfig) -> Result<()> {
         let meta_content = fs::read_to_string(&meta_path)
             .context("Failed to read meta.md")?;
 
-        let tasks = split(&config.splitter, &meta_content)
-            .context("Failed to split meta task")?;
+        // Use split_and_verify which handles task generation, writing, and verification
+        let tasks = split_and_verify(&config.splitter, &meta_content, &config.tasks_dir)
+            .context("Failed to split and verify meta task")?;
 
-        // Find highest existing task number
-        let existing_tasks = collect_tasks(&config.tasks_dir).unwrap_or_default();
-        let start_num = existing_tasks.iter().map(|(n, _)| *n).max().unwrap_or(0) + 1;
-
-        let total_tasks = tasks.len();
-        println!("[Splitter] Creating {} task files (starting from task-{})...", total_tasks, start_num);
+        println!("[Splitter] Created and verified {} task files", tasks.len());
         for (i, task) in tasks.iter().enumerate() {
-            let task_num = start_num + i;
-            let task_path = config.tasks_dir.join(format!("task-{}.md", task_num));
-            let content = format_task(task, i, total_tasks, &meta_content);
-            fs::write(&task_path, &content)
-                .context(format!("Failed to write task-{}.md", task_num))?;
-            println!("  [Created] task-{}.md ({}): {}", task_num, task.goal, task.description);
+            let task_num = i + 1;
+            println!("  [Created] task-{}.md ({}): {}", task_num, task.goal, 
+                task.description.chars().take(80).collect::<String>() + "...");
         }
 
         // Rename meta.md to meta.md.done to avoid re-processing
@@ -441,23 +434,28 @@ async fn process_task(
             .context("Failed to write how file")?;
         println!("[Saved] {}", how_path.display());
 
-        // Step 5: Checker validates multiple times (parallel)
-        println!("[Checker] Running {} validation checks in parallel...", config.checks);
+        // Step 5: Checker validates multiple times (sequential with delay)
+        println!("[Checker] Running {} validation checks sequentially...", config.checks);
 
-        // Clone checker config for parallel checks
         let checker_config = config.checker.clone();
-        let futures: Vec<_> = (1..=config.checks)
-            .map(|i| {
-                let task_clone = task_content.clone();
-                let plan_clone = revised_plan.clone();
-                let how_clone = actor_output.how.clone();
-                let result_clone = actor_output.result.clone();
-                let checker_clone = checker_config.clone();
-                task::spawn_blocking(move || (i, check(&checker_clone, &task_clone, &plan_clone, &how_clone, &result_clone)))
-            })
-            .collect();
-
-        let results = join_all(futures).await;
+        let mut results: Vec<(usize, Result<CheckResult>)> = Vec::new();
+        
+        for i in 1..=config.checks {
+            if i > 1 {
+                println!("  [Checker] Pausing 5 seconds before check {}...", i);
+                task::sleep(Duration::from_secs(5)).await;
+            }
+            println!("  [Checker] Running check {}...", i);
+            let task_clone = task_content.clone();
+            let plan_clone = revised_plan.clone();
+            let how_clone = actor_output.how.clone();
+            let result_clone = actor_output.result.clone();
+            let checker_clone = checker_config.clone();
+            let result = task::spawn_blocking(move || {
+                check(&checker_clone, &task_clone, &plan_clone, &how_clone, &result_clone)
+            }).await;
+            results.push((i, result));
+        }
 
         let mut passes = 0;
         let mut check_results: Vec<(usize, CheckResult)> = Vec::new();
@@ -635,22 +633,28 @@ async fn process_task(
 
         // Run rechecks only if fixer ran successfully
         if fixer_ran {
-            println!("[Recheck] Running {} rechecks in parallel (threshold: {})...",
+            println!("[Recheck] Running {} rechecks sequentially (threshold: {})...",
                      config.checks, config.recheck_threshold);
 
             let recheck_config = config.checker.clone();
-            let recheck_futures: Vec<_> = (1..=config.checks)
-                .map(|i| {
-                    let task_clone = task_content.clone();
-                    let plan_clone = revised_plan.clone();
-                    let how_clone = combined_how.clone();
-                    let result_clone = actor_output.result.clone();
-                    let checker_clone = recheck_config.clone();
-                    task::spawn_blocking(move || (i, check(&checker_clone, &task_clone, &plan_clone, &how_clone, &result_clone)))
-                })
-                .collect();
-
-            let recheck_results = join_all(recheck_futures).await;
+            let mut recheck_results: Vec<(usize, Result<CheckResult>)> = Vec::new();
+            
+            for i in 1..=config.checks {
+                if i > 1 {
+                    println!("  [Recheck] Pausing 5 seconds before recheck {}...", i);
+                    task::sleep(Duration::from_secs(5)).await;
+                }
+                println!("  [Recheck] Running recheck {}...", i);
+                let task_clone = task_content.clone();
+                let plan_clone = revised_plan.clone();
+                let how_clone = combined_how.clone();
+                let result_clone = actor_output.result.clone();
+                let checker_clone = recheck_config.clone();
+                let result = task::spawn_blocking(move || {
+                    check(&checker_clone, &task_clone, &plan_clone, &how_clone, &result_clone)
+                }).await;
+                recheck_results.push((i, result));
+            }
 
             let mut recheck_passes = 0;
             for result in &recheck_results {

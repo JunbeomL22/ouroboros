@@ -74,7 +74,9 @@ If you need to search the web for information to create a better plan, use the T
     let important_note = format!(
         "=== IMPORTANT ===
 - DO NOT create task-*.md files in the current directory or any other location. The task files are read-only inputs managed by the system.
+- DO NOT create tasks/plan.md or any plan files in the tasks directory. The system manages all file paths internally.
 - DO NOT execute any actions, modify files, run commands, or implement anything. Your ONLY job is to output a written plan. The Actor role will execute the plan later.
+- ONLY the system will write plan-i-j.md files. Do NOT create any other files. Do NOT use WriteFile, StrReplaceFile, or any other file modification tools.
 
 === CONTEXT HANDOFF ===
 The next task runs in a SEPARATE SESSION with no memory of this one.
